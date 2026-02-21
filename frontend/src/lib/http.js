@@ -92,8 +92,7 @@ function doRefresh() {
   if (inFlightRefreshPromise != null) {
     return inFlightRefreshPromise;
   }
-  const origin = getApiOrigin();
-  const refreshUrl = origin ? `${origin}${REFRESH_PATH}` : REFRESH_PATH;
+  const refreshUrl = buildApiUrl(REFRESH_PATH);
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
     console.debug('[apiFetch] refresh url=', refreshUrl, 'credentials=include');
   }
@@ -159,8 +158,7 @@ async function runWsRefreshLoop() {
   try {
     const result = await doRefresh();
     if (result.status === 401 || result.status === 403) {
-      const origin = getApiOrigin();
-      const refreshUrl = origin ? `${origin}${REFRESH_PATH}` : REFRESH_PATH;
+      const refreshUrl = buildApiUrl(REFRESH_PATH);
       const logoutContext =
         typeof window !== 'undefined'
           ? {
@@ -238,29 +236,36 @@ export class AuthDegradedError extends Error {
 }
 
 /**
- * Backend origin for API requests.
- * - Production with Vercel proxy: leave VITE_BACKEND_HTTP_URL unset → returns '' so requests go to same-origin /api (proxied to Render).
- * - Production without proxy: set VITE_BACKEND_HTTP_URL to backend origin (e.g. https://relay-chatapp.onrender.com).
- * - Dev: unset = current origin (Vite proxy); set = explicit backend.
- * @returns {string} Origin with no trailing slash, or '' for same-origin (relative /api paths).
+ * API base for HTTP requests. In PROD always same-origin "/api" so Vercel rewrites proxy to Render; env is ignored.
+ * In DEV: VITE_BACKEND_HTTP_URL or localhost:8000 (Vite proxy).
+ */
+export const API_BASE = import.meta.env.PROD
+  ? '/api'
+  : (import.meta.env.VITE_BACKEND_HTTP_URL || 'http://localhost:8000');
+
+/**
+ * Backend origin for API requests (for building full URLs).
+ * - PROD: always '' so all requests are same-origin (e.g. /api/me) and Vercel proxy is used.
+ * - DEV: full origin from API_BASE or window.location.origin.
+ * @returns {string} Origin with no trailing slash, or '' for same-origin.
  */
 export function getApiOrigin() {
-  const raw = import.meta.env.VITE_BACKEND_HTTP_URL;
-  const trimmed = typeof raw === 'string' ? raw.trim().replace(/\/$/, '') : '';
-  if (trimmed && /localhost|127\.0\.0\.1/i.test(trimmed) && import.meta.env.PROD) {
-    throw new Error('VITE_BACKEND_HTTP_URL must not point to localhost in production.');
-  }
+  if (import.meta.env.PROD) return '';
+  const base = import.meta.env.VITE_BACKEND_HTTP_URL;
+  const trimmed = typeof base === 'string' ? base.trim().replace(/\/$/, '') : '';
+  if (trimmed && /localhost|127\.0\.0\.1/i.test(trimmed)) return trimmed;
   if (trimmed) return trimmed;
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
   return '';
 }
 
-/**
- * @param {string} path - Path starting with /api (e.g. /api/me)
- * @param {RequestInit & { body?: object, __retried?: boolean }} options - fetch options; body object is JSON.stringify'd; __retried is internal
- * @returns {Promise<{ success: boolean, data?: any, error?: string, code?: string }>} Parsed JSON
- */
-function apiBaseUrl() {
-  return getApiOrigin();
+/** Build full API URL from path (e.g. /api/me). In PROD API_BASE is /api so result is same-origin. */
+function buildApiUrl(pathNorm) {
+  if (API_BASE === '/api') {
+    const suffix = pathNorm.startsWith('/api') ? pathNorm.slice(4) : pathNorm;
+    return `${API_BASE}${suffix}`;
+  }
+  return `${API_BASE.replace(/\/$/, '')}${pathNorm.startsWith('/') ? pathNorm : '/' + pathNorm}`;
 }
 
 /** DEV only: detect /api/chats call burst (possible regression). Reset every 2s; warn once if >2 in window. */
@@ -273,7 +278,7 @@ const CHATS_BURST_THRESHOLD = 2;
 export async function apiFetch(path, options = {}) {
   const { body, __retried, credentials: _cred, mode: _mode, ...rest } = options;
   const pathNorm = path.startsWith('/') ? path : `/${path}`;
-  const url = apiBaseUrl() ? `${apiBaseUrl()}${pathNorm}` : pathNorm;
+  const url = buildApiUrl(pathNorm);
 
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
     const isChatsList = pathNorm === '/api/chats' || pathNorm.startsWith('/api/chats?');
@@ -369,8 +374,7 @@ export async function apiFetch(path, options = {}) {
       throw err;
     }
 
-    const origin = getApiOrigin();
-    const refreshUrl = origin ? `${origin}${REFRESH_PATH}` : REFRESH_PATH;
+    const refreshUrl = buildApiUrl(REFRESH_PATH);
 
     let refreshResult;
     try {
