@@ -236,36 +236,40 @@ export class AuthDegradedError extends Error {
 }
 
 /**
- * API base for HTTP requests. In PROD always same-origin "/api" so Vercel rewrites proxy to Render; env is ignored.
- * In DEV: VITE_BACKEND_HTTP_URL or localhost:8000 (Vite proxy).
+ * API base for HTTP requests.
+ * - PROD: VITE_BACKEND_HTTP_URL (required). Frontend calls Render directly; no Vercel proxy.
+ * - DEV: VITE_BACKEND_HTTP_URL or localhost:8000 (Vite proxy).
  */
 export const API_BASE = import.meta.env.PROD
-  ? '/api'
+  ? (typeof import.meta.env.VITE_BACKEND_HTTP_URL === 'string'
+      ? import.meta.env.VITE_BACKEND_HTTP_URL.trim().replace(/\/$/, '')
+      : '')
   : (import.meta.env.VITE_BACKEND_HTTP_URL || 'http://localhost:8000');
 
 /**
- * Backend origin for API requests (for building full URLs).
- * - PROD: always '' so all requests are same-origin (e.g. /api/me) and Vercel proxy is used.
- * - DEV: full origin from API_BASE or window.location.origin.
- * @returns {string} Origin with no trailing slash, or '' for same-origin.
+ * Backend origin for API requests (for building full URLs in direct fetch calls).
+ * - PROD: VITE_BACKEND_HTTP_URL (same as API_BASE) so upload/export/debug use backend directly.
+ * - DEV: full origin from env or window.location.origin.
+ * @returns {string} Origin with no trailing slash, or '' for same-origin in dev.
  */
 export function getApiOrigin() {
-  if (import.meta.env.PROD) return '';
   const base = import.meta.env.VITE_BACKEND_HTTP_URL;
   const trimmed = typeof base === 'string' ? base.trim().replace(/\/$/, '') : '';
+  if (import.meta.env.PROD) return trimmed;
   if (trimmed && /localhost|127\.0\.0\.1/i.test(trimmed)) return trimmed;
   if (trimmed) return trimmed;
   if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
   return '';
 }
 
-/** Build full API URL from path (e.g. /api/me). In PROD API_BASE is /api so result is same-origin. */
+/** Build full API URL from path (e.g. /api/me). PROD: full backend URL. DEV: backend or same-origin. */
 function buildApiUrl(pathNorm) {
-  if (API_BASE === '/api') {
-    const suffix = pathNorm.startsWith('/api') ? pathNorm.slice(4) : pathNorm;
-    return `${API_BASE}${suffix}`;
+  const path = pathNorm.startsWith('/') ? pathNorm : `/${pathNorm}`;
+  if (!API_BASE) {
+    return path;
   }
-  return `${API_BASE.replace(/\/$/, '')}${pathNorm.startsWith('/') ? pathNorm : '/' + pathNorm}`;
+  const base = API_BASE.replace(/\/$/, '');
+  return `${base}${path}`;
 }
 
 /** DEV only: detect /api/chats call burst (possible regression). Reset every 2s; warn once if >2 in window. */

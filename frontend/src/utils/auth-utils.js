@@ -11,6 +11,6 @@ export function redirectToLogin(toast) {
     });
   }
   setTimeout(() => {
-    window.location.href = "/api/login";
+    window.location.href = "/login";
   }, 500);
 }

@@ -1,10 +1,13 @@
 /**
- * Base URL for API requests. In dev with proxy: leave unset so same-origin and cookies attach.
- * In production with split deploy (e.g. Render Static Site + Web Service): set VITE_API_BASE_URL
- * to the backend origin so API requests and cookies target the backend.
+ * Base URL for API requests. Use VITE_BACKEND_HTTP_URL for consistency with lib/http.js.
+ * In dev with proxy: leave unset so same-origin and cookies attach.
+ * In production: VITE_BACKEND_HTTP_URL is required (frontend calls Render directly).
  */
 export function getApiBase() {
-  const base = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL;
+  const base =
+    import.meta.env.VITE_BACKEND_HTTP_URL ??
+    import.meta.env.VITE_API_BASE_URL ??
+    import.meta.env.VITE_API_URL;
   const trimmed = typeof base === "string" ? base.replace(/\/$/, "") : "";
   if (typeof window !== "undefined") return trimmed;
   return trimmed;
