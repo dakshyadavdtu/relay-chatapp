@@ -13,6 +13,20 @@ const ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
 
 function corsMiddleware(req, res, next) {
   const origin = req.get('Origin');
+
+  // Handle all OPTIONS preflight here so they never reach originGuard/auth/rate limiter.
+  if (req.method === 'OPTIONS') {
+    if (origin && isAllowedOrigin(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
+      res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);
+    }
+    res.status(204).end();
+    return;
+  }
+
   if (!origin) {
     return next();
   }
@@ -24,12 +38,6 @@ function corsMiddleware(req, res, next) {
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
   res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
-
   next();
 }
 

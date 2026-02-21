@@ -13,6 +13,11 @@
  * and path/query/fragment are rejected so they cannot cause mismatches.
  *
  * In dev: isAllowedOrigin also allows any localhost/127.0.0.1 with any port.
+ *
+ * Optional CORS_ORIGIN_PATTERNS (comma-separated): controlled wildcard patterns.
+ * Only these two pattern strings are accepted (safe RegExp, https-only, full-origin match):
+ *   https://relay-chatapp-vercel-frontend-*.vercel.app
+ *   https://relay-chatapp-vercel-frontend-git-*.vercel.app
  */
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -21,6 +26,44 @@ const DEV_DEFAULTS = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
 ];
+
+/** Only these pattern strings are allowed; * becomes [a-zA-Z0-9-]+ for full-origin match. */
+const ALLOWED_ORIGIN_PATTERN_STRINGS = [
+  'https://relay-chatapp-vercel-frontend-*.vercel.app',
+  'https://relay-chatapp-vercel-frontend-git-*.vercel.app',
+];
+
+/**
+ * Validates that a pattern string is one of the allowed origin patterns (for env validation).
+ * @param {string} patternStr - Trimmed pattern string from CORS_ORIGIN_PATTERNS
+ * @returns {boolean}
+ */
+function validateOriginPatternString(patternStr) {
+  return typeof patternStr === 'string' && ALLOWED_ORIGIN_PATTERN_STRINGS.includes(patternStr);
+}
+
+function compileOriginPattern(patternStr) {
+  if (!ALLOWED_ORIGIN_PATTERN_STRINGS.includes(patternStr)) return null;
+  if (patternStr === 'https://relay-chatapp-vercel-frontend-*.vercel.app') {
+    return /^https:\/\/relay-chatapp-vercel-frontend-[a-zA-Z0-9-]+\.vercel\.app$/;
+  }
+  if (patternStr === 'https://relay-chatapp-vercel-frontend-git-*.vercel.app') {
+    return /^https:\/\/relay-chatapp-vercel-frontend-git-[a-zA-Z0-9-]+\.vercel\.app$/;
+  }
+  return null;
+}
+
+function parseOriginPatterns() {
+  const raw = (process.env.CORS_ORIGIN_PATTERNS || '').trim();
+  if (!raw) return [];
+  const list = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  const regexes = [];
+  for (const entry of list) {
+    const re = compileOriginPattern(entry);
+    if (re) regexes.push(re);
+  }
+  return regexes;
+}
 
 /**
  * Normalize an origin string to canonical form (URL.origin).
@@ -83,7 +126,8 @@ let cached = null;
 function getAllowedOrigins() {
   if (cached) return cached;
   const list = parse();
-  cached = { allowedOrigins: dedupe(list) };
+  const originPatternRegexes = parseOriginPatterns();
+  cached = { allowedOrigins: dedupe(list), originPatternRegexes };
   return cached;
 }
 
@@ -134,9 +178,15 @@ function isAllowedOrigin(origin) {
     return false;
   }
 
-  const { allowedOrigins } = getAllowedOrigins();
+  const { allowedOrigins, originPatternRegexes } = getAllowedOrigins();
   if (allowedOrigins.includes(canonicalOrigin)) return true;
   if (!isProduction && isLocalhostOrigin(origin)) return true;
+  // Pattern match: https-only, full-origin; no arbitrary domains
+  if (canonicalOrigin.startsWith('https://') && originPatternRegexes.length > 0) {
+    for (const re of originPatternRegexes) {
+      if (re.test(canonicalOrigin)) return true;
+    }
+  }
   return false;
 }
 
@@ -148,5 +198,6 @@ module.exports = {
   isAllowedOrigin,
   normalizeOrigin,
   validateOriginFormat,
+  validateOriginPatternString,
   isLocalhostOrigin,
 };

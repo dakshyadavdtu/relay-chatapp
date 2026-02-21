@@ -10,16 +10,9 @@
  * Prod: block missing Origin+Referer and block non-allowed origins.
  *
  * WS upgrade is unaffected (handled before /api routes).
- *
- * Debug (safe logging only; never logs cookies, auth headers, or body):
- *   DEBUG_ORIGIN_GUARD=true     → log requestOrigin, decision, and allowedOrigins count.
- *   DEBUG_ORIGIN_GUARD_VERBOSE=true → also log full allowedOrigins list (use only when needed).
  */
 
-const { isAllowedOrigin, getAllowedOrigins } = require('../../config/origins');
-
-const DEBUG_ORIGIN_GUARD = process.env.DEBUG_ORIGIN_GUARD === 'true';
-const DEBUG_ORIGIN_GUARD_VERBOSE = process.env.DEBUG_ORIGIN_GUARD_VERBOSE === 'true';
+const { isAllowedOrigin } = require('../../config/origins');
 
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const isProduction = process.env.NODE_ENV === 'production';
@@ -44,19 +37,7 @@ function originGuard(req, res, next) {
   }
 
   const requestOrigin = getRequestOrigin(req);
-  const allowed = getAllowedOrigins().allowedOrigins;
   const matched = Boolean(requestOrigin && isAllowedOrigin(requestOrigin));
-
-  // Safe logging only: never cookies, auth headers, or body. Default: origin + decision + count.
-  if (DEBUG_ORIGIN_GUARD) {
-    const payload = {
-      requestOrigin: requestOrigin ?? '(none)',
-      decision: matched ? 'allow' : 'block',
-      allowedOriginsCount: allowed.length,
-    };
-    if (DEBUG_ORIGIN_GUARD_VERBOSE) payload.allowedOrigins = allowed;
-    console.debug('[OriginGuard]', payload);
-  }
 
   if (matched) {
     return next();

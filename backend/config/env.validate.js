@@ -47,7 +47,7 @@ function validateEnv() {
   }
 
   // --- Production: hard required (no silent defaults) ---
-  // Prod required (keep in sync with .env.example + docs): NODE_ENV, PORT, JWT_SECRET, DB_URI, REFRESH_PEPPER, WS_PATH (+ CORS_ORIGIN or CORS_ORIGINS). COOKIE_DOMAIN not required (host-only cookies).
+  // Prod required (keep in sync with .env.example + docs): NODE_ENV, PORT, JWT_SECRET, DB_URI, REFRESH_PEPPER, WS_PATH (+ at least one of CORS_ORIGIN, CORS_ORIGINS, or CORS_ORIGIN_PATTERNS). COOKIE_DOMAIN not required (host-only cookies).
   if (isProduction) {
     const required = ['NODE_ENV', 'PORT', 'JWT_SECRET', 'DB_URI', 'REFRESH_PEPPER', 'WS_PATH'];
     for (const name of required) {
@@ -57,22 +57,34 @@ function validateEnv() {
         process.exit(1);
       }
     }
-    // At least one of CORS_ORIGIN or CORS_ORIGINS must be set (non-empty)
+    // At least one of CORS_ORIGIN, CORS_ORIGINS, or CORS_ORIGIN_PATTERNS must be set (non-empty)
     const corsOriginsRaw = (v.CORS_ORIGINS || '').trim();
     const corsOriginRaw = (v.CORS_ORIGIN || '').trim();
-    if (!corsOriginsRaw && !corsOriginRaw) {
-      console.error('Missing required for production: at least one of CORS_ORIGIN or CORS_ORIGINS must be set.');
-      process.exit(1);
-    }
-    const { validateOriginFormat } = require('./origins');
+    const corsOriginPatternsRaw = (v.CORS_ORIGIN_PATTERNS || '').trim();
     const originStrings = corsOriginsRaw
       ? corsOriginsRaw.split(',').map((s) => s.trim()).filter(Boolean)
       : corsOriginRaw
-        ? [corsOriginRaw]
+        ? [corsOriginRaw.trim()]
         : [];
+    const patternStrings = corsOriginPatternsRaw
+      ? corsOriginPatternsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const hasOrigins = originStrings.length > 0;
+    const hasPatterns = patternStrings.length > 0;
+    if (!hasOrigins && !hasPatterns) {
+      console.error('Missing required for production: at least one of CORS_ORIGIN, CORS_ORIGINS, or CORS_ORIGIN_PATTERNS must be set.');
+      process.exit(1);
+    }
+    const { validateOriginFormat, validateOriginPatternString } = require('./origins');
     for (const origin of originStrings) {
       if (!validateOriginFormat(origin)) {
         console.error('CORS_ORIGIN / CORS_ORIGINS entry must be an origin only, e.g. https://app.com (no path/query/hash).');
+        process.exit(1);
+      }
+    }
+    for (const pattern of patternStrings) {
+      if (!validateOriginPatternString(pattern)) {
+        console.error('CORS_ORIGIN_PATTERNS entry must be one of the allowed pattern strings (see config/origins.js).');
         process.exit(1);
       }
     }

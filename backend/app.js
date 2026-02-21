@@ -12,6 +12,7 @@ const { corsMiddleware } = require('./http/middleware/cors.middleware');
 const { allowedOrigins } = require('./config/origins');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Serve uploaded files (e.g. group thumbnails) at /uploads
 const uploadsDir = path.resolve(__dirname, 'storage', '_data', 'uploads');
