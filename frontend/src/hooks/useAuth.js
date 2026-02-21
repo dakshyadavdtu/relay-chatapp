@@ -8,6 +8,7 @@ import { getAuthState, setAuthState, subscribeAuth } from "@/state/auth.state";
 import { getCurrentUser, loginUser as loginUserApi, registerUser as registerUserApi, logoutUser as logoutUserApi } from "@/http/auth.api";
 import { wsClient } from "@/transport/wsClient";
 import { emitAuthChanged } from "@/lib/authEvents";
+import { clearRefreshDisabledUntilLogin } from "@/lib/http";
 
 let authInitPromise = null;
 
@@ -51,6 +52,7 @@ export function useAuth() {
         throw new Error("Session could not be verified");
       }
       setAuthState({ user, isAuthenticated: true, isLoading: false, error: null });
+      clearRefreshDisabledUntilLogin();
       emitAuthChanged('login', { userId: user?.id });
       return user;
     } catch (e) {
@@ -69,6 +71,7 @@ export function useAuth() {
         throw new Error("Session could not be verified");
       }
       setAuthState({ user, isAuthenticated: true, isLoading: false, error: null });
+      clearRefreshDisabledUntilLogin();
       emitAuthChanged('login', { userId: user?.id });
       return user;
     } catch (e) {

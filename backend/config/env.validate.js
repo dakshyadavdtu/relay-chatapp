@@ -47,9 +47,9 @@ function validateEnv() {
   }
 
   // --- Production: hard required (no silent defaults) ---
-  // Prod required (keep in sync with .env.example + docs): NODE_ENV, PORT, JWT_SECRET, DB_URI, REFRESH_PEPPER, COOKIE_DOMAIN, WS_PATH (+ CORS_ORIGIN or CORS_ORIGINS below).
+  // Prod required (keep in sync with .env.example + docs): NODE_ENV, PORT, JWT_SECRET, DB_URI, REFRESH_PEPPER, WS_PATH (+ CORS_ORIGIN or CORS_ORIGINS). COOKIE_DOMAIN not required (host-only cookies).
   if (isProduction) {
-    const required = ['NODE_ENV', 'PORT', 'JWT_SECRET', 'DB_URI', 'REFRESH_PEPPER', 'COOKIE_DOMAIN', 'WS_PATH'];
+    const required = ['NODE_ENV', 'PORT', 'JWT_SECRET', 'DB_URI', 'REFRESH_PEPPER', 'WS_PATH'];
     for (const name of required) {
       const val = v[name];
       if (val === undefined || val === '' || (typeof val === 'string' && val.trim() === '')) {

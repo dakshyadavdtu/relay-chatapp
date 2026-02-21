@@ -48,6 +48,8 @@ let inFlightRefreshPromise = null;
 let lastRefreshAt = 0;
 /** Single timer for WS-connected refresh loop (setTimeout; cleared on close/reconnect). Only one exists at a time. */
 let proactiveRefreshTimerId = null;
+/** When true, do not attempt refresh until next successful login (avoids tight loop after refresh 401). */
+let refreshDisabledUntilLogin = false;
 
 /**
  * @param {{ path?: string, lastFailedUrl?: string, lastStatus?: number, host?: string, cookiePresent?: boolean }} [context] - Optional context (kept for caller compatibility).
@@ -80,9 +82,13 @@ function stopProactiveRefreshInterval() {
 /**
  * Perform POST /api/auth/refresh once. Dedupes: concurrent callers get the same promise.
  * Never call this when the current request path is REFRESH_PATH (caller must guard).
+ * If refresh previously returned 401, skip network and resolve with 401 until next login.
  * @returns {Promise<{ ok: boolean, status: number }>} ok true if 200, status for 401/403/5xx.
  */
 function doRefresh() {
+  if (refreshDisabledUntilLogin) {
+    return Promise.resolve({ ok: false, status: 401, response: null });
+  }
   if (inFlightRefreshPromise != null) {
     return inFlightRefreshPromise;
   }
@@ -98,6 +104,9 @@ function doRefresh() {
       });
       const ok = refreshRes.ok && refreshRes.status === 200;
       const status = refreshRes.status;
+      if (status === 401 || status === 403) {
+        refreshDisabledUntilLogin = true;
+      }
       if (status === 429) {
         // rate limited
       }
@@ -116,6 +125,7 @@ function doRefresh() {
  */
 async function ensureRefreshBeforeRequest(pathNorm, options) {
   if (pathNorm === REFRESH_PATH || pathNorm.startsWith(REFRESH_PATH + '?')) return;
+  if (refreshDisabledUntilLogin) return;
   if (
     pathNorm === '/api/login' ||
     pathNorm === '/api/register' ||
@@ -142,6 +152,7 @@ async function ensureRefreshBeforeRequest(pathNorm, options) {
 async function runWsRefreshLoop() {
   proactiveRefreshTimerId = null;
   if (isDevTokenMode() || !isCookieMode()) return;
+  if (refreshDisabledUntilLogin) return;
   try {
     const result = await doRefresh();
     if (result.status === 401 || result.status === 403) {
@@ -182,6 +193,11 @@ export function scheduleProactiveRefreshFromWs() {
   if (isDevTokenMode() || !isCookieMode()) return;
   stopProactiveRefreshInterval();
   proactiveRefreshTimerId = setTimeout(runWsRefreshLoop, PROACTIVE_REFRESH_INTERVAL_MS);
+}
+
+/** Reset refresh guard so refresh is attempted again after next login. Call on successful login. */
+export function clearRefreshDisabledUntilLogin() {
+  refreshDisabledUntilLogin = false;
 }
 
 /** Cookie mode: another tab logged in; show clear message and redirect (no generic 401). */

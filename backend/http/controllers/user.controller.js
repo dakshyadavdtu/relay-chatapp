@@ -16,7 +16,7 @@
  */
 
 const config = require('../../config/constants');
-const { COOKIE_DOMAIN, COOKIE_SECURE, COOKIE_SAME_SITE, COOKIE_PATH } = require('../../config/cookieConfig');
+const { COOKIE_SECURE, COOKIE_SAME_SITE, COOKIE_PATH, REFRESH_COOKIE_PATH } = require('../../config/cookieConfig');
 const { sendError, sendSuccess } = require('../../utils/errorResponse');
 const { toApiUser } = require('../../utils/apiShape');
 const userLookup = require('../../users/user.service');
@@ -25,18 +25,24 @@ const connectionManager = require('../../websocket/connection/connectionManager'
 
 const JWT_COOKIE_NAME = config.JWT_COOKIE_NAME;
 const REFRESH_COOKIE_NAME = config.REFRESH_COOKIE_NAME;
-const cookieClearOptions = {
+const tokenClearOptions = {
   httpOnly: true,
   secure: COOKIE_SECURE,
   sameSite: COOKIE_SAME_SITE,
   path: COOKIE_PATH,
   maxAge: 0,
 };
-if (COOKIE_DOMAIN) cookieClearOptions.domain = COOKIE_DOMAIN;
+const refreshClearOptions = {
+  httpOnly: true,
+  secure: COOKIE_SECURE,
+  sameSite: COOKIE_SAME_SITE,
+  path: REFRESH_COOKIE_PATH,
+  maxAge: 0,
+};
 
 function clearAuthCookies(res) {
-  res.clearCookie(JWT_COOKIE_NAME, cookieClearOptions);
-  res.clearCookie(REFRESH_COOKIE_NAME, cookieClearOptions);
+  res.clearCookie(JWT_COOKIE_NAME, tokenClearOptions);
+  res.clearCookie(REFRESH_COOKIE_NAME, refreshClearOptions);
 }
 
 /**

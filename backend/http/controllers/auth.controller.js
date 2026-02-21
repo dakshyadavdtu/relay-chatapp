@@ -32,7 +32,7 @@
  */
 
 const config = require('../../config/constants');
-const { COOKIE_DOMAIN, COOKIE_SECURE, COOKIE_SAME_SITE, COOKIE_PATH } = require('../../config/cookieConfig');
+const { COOKIE_SECURE, COOKIE_SAME_SITE, COOKIE_PATH, REFRESH_COOKIE_PATH } = require('../../config/cookieConfig');
 const { capabilitiesFor } = require('../../auth/capabilities');
 const { sendError, sendSuccess } = require('../../utils/errorResponse');
 const { toApiUser } = require('../../utils/apiShape');
@@ -48,18 +48,24 @@ const { getClientIpFromReq } = require('../../utils/ip');
 const JWT_COOKIE_NAME = config.JWT_COOKIE_NAME;
 const REFRESH_COOKIE_NAME = config.REFRESH_COOKIE_NAME;
 
-const cookieClearOptions = {
+const tokenClearOptions = {
   httpOnly: true,
   secure: COOKIE_SECURE,
   sameSite: COOKIE_SAME_SITE,
   path: COOKIE_PATH,
   maxAge: 0,
 };
-if (COOKIE_DOMAIN) cookieClearOptions.domain = COOKIE_DOMAIN;
+const refreshClearOptions = {
+  httpOnly: true,
+  secure: COOKIE_SECURE,
+  sameSite: COOKIE_SAME_SITE,
+  path: REFRESH_COOKIE_PATH,
+  maxAge: 0,
+};
 
 function clearAuthCookies(res) {
-  res.clearCookie(JWT_COOKIE_NAME, cookieClearOptions);
-  res.clearCookie(REFRESH_COOKIE_NAME, cookieClearOptions);
+  res.clearCookie(JWT_COOKIE_NAME, tokenClearOptions);
+  res.clearCookie(REFRESH_COOKIE_NAME, refreshClearOptions);
 }
 
 /**
@@ -113,19 +119,24 @@ async function login(req, res) {
     return sendError(res, 500, 'DEV_TOKEN_MODE is not allowed in production', 'CONFIG_ERROR');
   }
   if (!devTokenMode) {
-    const cookieOptions = {
+    const tokenCookieOpts = {
       httpOnly: true,
       secure: COOKIE_SECURE,
       sameSite: COOKIE_SAME_SITE,
       path: COOKIE_PATH,
     };
-    if (COOKIE_DOMAIN) cookieOptions.domain = COOKIE_DOMAIN;
+    const refreshCookieOpts = {
+      httpOnly: true,
+      secure: COOKIE_SECURE,
+      sameSite: COOKIE_SAME_SITE,
+      path: REFRESH_COOKIE_PATH,
+    };
     res.cookie(JWT_COOKIE_NAME, accessToken, {
-      ...cookieOptions,
+      ...tokenCookieOpts,
       maxAge: config.ACCESS_TOKEN_EXPIRES_IN_SECONDS * 1000,
     });
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
-      ...cookieOptions,
+      ...refreshCookieOpts,
       maxAge: config.REFRESH_TOKEN_EXPIRES_IN_SECONDS * 1000,
     });
   }
@@ -200,20 +211,24 @@ async function refresh(req, res) {
     role: session.role || ROLES.USER,
   });
 
-  const cookieOptions = {
+  const tokenCookieOpts = {
     httpOnly: true,
     secure: COOKIE_SECURE,
     sameSite: COOKIE_SAME_SITE,
     path: COOKIE_PATH,
   };
-  if (COOKIE_DOMAIN) cookieOptions.domain = COOKIE_DOMAIN;
-
+  const refreshCookieOpts = {
+    httpOnly: true,
+    secure: COOKIE_SECURE,
+    sameSite: COOKIE_SAME_SITE,
+    path: REFRESH_COOKIE_PATH,
+  };
   res.cookie(JWT_COOKIE_NAME, accessToken, {
-    ...cookieOptions,
+    ...tokenCookieOpts,
     maxAge: config.ACCESS_TOKEN_EXPIRES_IN_SECONDS * 1000,
   });
   res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, {
-    ...cookieOptions,
+    ...refreshCookieOpts,
     maxAge: config.REFRESH_TOKEN_EXPIRES_IN_SECONDS * 1000,
   });
 
@@ -416,20 +431,24 @@ async function register(req, res) {
   const refreshExpiresAt = Date.now() + config.REFRESH_TOKEN_EXPIRES_IN_SECONDS * 1000;
   await sessionStore.storeRefreshHash(sessionId, refreshHash, refreshExpiresAt);
 
-  const cookieOptions = {
+  const tokenCookieOpts = {
     httpOnly: true,
     secure: COOKIE_SECURE,
     sameSite: COOKIE_SAME_SITE,
     path: COOKIE_PATH,
   };
-  if (COOKIE_DOMAIN) cookieOptions.domain = COOKIE_DOMAIN;
-
+  const refreshCookieOpts = {
+    httpOnly: true,
+    secure: COOKIE_SECURE,
+    sameSite: COOKIE_SAME_SITE,
+    path: REFRESH_COOKIE_PATH,
+  };
   res.cookie(JWT_COOKIE_NAME, accessToken, {
-    ...cookieOptions,
+    ...tokenCookieOpts,
     maxAge: config.ACCESS_TOKEN_EXPIRES_IN_SECONDS * 1000,
   });
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
-    ...cookieOptions,
+    ...refreshCookieOpts,
     maxAge: config.REFRESH_TOKEN_EXPIRES_IN_SECONDS * 1000,
   });
 
