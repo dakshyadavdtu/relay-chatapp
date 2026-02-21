@@ -1,80 +1,94 @@
 'use strict';
 
-// PHASE 1 — MOVED: Pure bootstrap - process startup only
-// Express app configuration moved to app.js
-// WebSocket bootstrap remains in websocket/index.js
-
 require('./config/env');
-require('./config/cookieConfig'); // Log effective cookie settings in dev
+require('./config/cookieConfig');
 
 const http = require('http');
-const net = require('net');
 const config = require('./config/constants');
 const app = require('./app');
 const { attachWebSocketServer } = require('./websocket');
 const redisBus = require('./services/redisBus');
 const { createOnChatMessage, createOnAdminKick } = require('./services/redisBusHandlers');
-const logger = require('./utils/logger');
 const roomManager = require('./websocket/state/roomManager');
 const userService = require('./services/user.service');
-const userStoreStorage = require('./storage/user.mongo');
 
-async function findAvailablePort(preferred, maxPort = 3010) {
-  return new Promise((resolve) => {
-    const tryPort = (port) => {
-      const portProbe = net
-        .createServer()
-        .once('error', (err) => {
-          if (err.code === 'EADDRINUSE' && port < maxPort) {
-            return tryPort(port + 1);
-          }
-          resolve(preferred); // fall back to preferred if unexpected error or no more room
-        })
-        .once('listening', () => {
-          portProbe.close(() => resolve(port));
-        })
-        .listen(port, '0.0.0.0');
-    };
-    tryPort(preferred);
-  });
+// Readiness flag
+let READY = false;
+
+// Inject readiness route into Express before starting
+app.get('/readyz', (req, res) => res.status(READY ? 200 : 503).send(READY ? 'ready' : 'not-ready'));
+
+/**
+ * Retry loop for Redis so the backend doesn't crash 
+ * if Render's free Redis takes a while to wake up.
+ */
+async function startRedisWithRetry() {
+  while (true) {
+    try {
+      const localInstanceId = redisBus.getInstanceId();
+      await redisBus.startRedisBus({
+        onChatMessage: createOnChatMessage({ instanceId: localInstanceId }),
+        onAdminKick: createOnAdminKick({ instanceId: localInstanceId }),
+      });
+      console.log('Redis bus started successfully.');
+      return;
+    } catch (e) {
+      console.error('Redis init failed, retrying in 5s:', e.message);
+      await new Promise(r => setTimeout(r, 5000));
+    }
+  }
 }
 
 async function start() {
-  const port = await findAvailablePort(config.PORT);
+  // 1. Safe port coercion
+  const port = Number(process.env.PORT || config.PORT || 10000);
 
-  await roomManager.loadFromStore();
-  await userService.ensureRootAdmin();
-  await userService.ensureDevAdminUser();
-
-  // Create HTTP server from Express app
+  // 2. Create HTTP server from Express app
   const server = http.createServer(app);
 
-  // Attach WebSocket server (PHASE 1 — MOVED from app.js). Path from env (required in prod).
+  // 3. Attach WebSocket server
   const wsPath = process.env.WS_PATH || '/ws';
   const wsCore = attachWebSocketServer(server, { path: wsPath });
 
-  // Redis bus: connect + subscribe; real handlers deliver/kick on local sockets
-  const localInstanceId = redisBus.getInstanceId();
-  await redisBus.startRedisBus({
-    onChatMessage: createOnChatMessage({ instanceId: localInstanceId }),
-    onAdminKick: createOnAdminKick({ instanceId: localInstanceId }),
-  });
-
-  server.listen(port, () => {
-    const snapshotWriter = require('./observability/snapshotWriter');
-    snapshotWriter.start();
-    console.log(`Backend listening on http://localhost:${port}`);
+  // 4. 🔥 LISTEN FIRST 🔥 (Satisfies Render Port Scanner)
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`Backend listening on 0.0.0.0:${port}`);
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`DEV: ws path=/ws. Frontend VITE_BACKEND_PORT should match PORT (default 8000).`);
+      console.log(`DEV: ws path=${wsPath}. Frontend VITE_BACKEND_PORT should match PORT.`);
     }
   });
 
+  // 5. SLOW INITIALIZATION WITH RETRY
+  try {
+    console.log('Starting background initialization (DB, Redis)...');
+    
+    await roomManager.loadFromStore();
+    await userService.ensureRootAdmin();
+    await userService.ensureDevAdminUser();
+
+    // Start Redis with the robust retry loop
+    await startRedisWithRetry();
+
+    const snapshotWriter = require('./observability/snapshotWriter');
+    snapshotWriter.start();
+    
+    // Mark as fully ready!
+    READY = true;
+    console.log('Background initialization complete. Server is READY.');
+  } catch (error) {
+    console.error('Fatal error during background initialization:', error);
+  }
+
+  // 6. Graceful Shutdown Handlers
   function handleShutdown(signal) {
     (async () => {
       let exitCode = 0;
+      console.log(`Received ${signal}. Starting graceful shutdown...`);
       try {
         const snapshotWriter = require('./observability/snapshotWriter');
-        snapshotWriter.stop();
+        if (snapshotWriter && typeof snapshotWriter.stop === 'function') {
+           snapshotWriter.stop();
+        }
         if (wsCore && typeof wsCore.shutdown === 'function') {
           await wsCore.shutdown();
         }
@@ -86,6 +100,7 @@ async function start() {
           });
         });
       } catch (error) {
+        console.error('Error during shutdown:', error);
         exitCode = 1;
       } finally {
         try {

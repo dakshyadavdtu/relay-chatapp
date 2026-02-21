@@ -17,7 +17,8 @@ const CHAT_MESSAGE_CHANNEL = 'chat.message';
 const ADMIN_KICK_CHANNEL = 'admin.kick';
 
 /** Max wait for Redis to connect before treating as unavailable (avoids hang when Redis is down). */
-const INIT_TIMEOUT_MS = 5000;
+// 🔥 INCREASED TIMEOUT: Changed from 5000 to 30000 to accommodate slow free-tier Redis spin-ups
+const INIT_TIMEOUT_MS = 30000;
 
 let busDisabled = false;
 let started = false;
