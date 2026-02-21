@@ -53,6 +53,7 @@ let savedEnv = {};
 function saveEnv() {
   savedEnv.CORS_ORIGINS = process.env.CORS_ORIGINS;
   savedEnv.CORS_ORIGIN = process.env.CORS_ORIGIN;
+  savedEnv.CORS_ORIGIN_PATTERNS = process.env.CORS_ORIGIN_PATTERNS;
   savedEnv.NODE_ENV = process.env.NODE_ENV;
 }
 function restoreEnv() {
@@ -60,6 +61,8 @@ function restoreEnv() {
   else delete process.env.CORS_ORIGINS;
   if (savedEnv.CORS_ORIGIN !== undefined) process.env.CORS_ORIGIN = savedEnv.CORS_ORIGIN;
   else delete process.env.CORS_ORIGIN;
+  if (savedEnv.CORS_ORIGIN_PATTERNS !== undefined) process.env.CORS_ORIGIN_PATTERNS = savedEnv.CORS_ORIGIN_PATTERNS;
+  else delete process.env.CORS_ORIGIN_PATTERNS;
   if (savedEnv.NODE_ENV !== undefined) process.env.NODE_ENV = savedEnv.NODE_ENV;
   else delete process.env.NODE_ENV;
 }
@@ -187,6 +190,19 @@ async function main() {
   assert(res.status !== 403, 'Referer-derived origin "https://a.com" must not be blocked (status !== 403)');
   assert(res.status === 200, 'Expect 200 from test route');
   console.log('PASS: Referer "https://a.com/some/page" -> derived origin "https://a.com" allowed');
+
+  // --- 7) Wildcard: isAllowedOrigin matches Vercel preview origin when allowlist has wildcard ---
+  clearOriginsCache();
+  process.env.CORS_ORIGINS = 'https://relay-chatapp-vercel-frontend.vercel.app,https://relay-chatapp-vercel-frontend-*.vercel.app';
+  process.env.NODE_ENV = 'production';
+  const origins7 = loadOrigins();
+  const vercelPreview = 'https://relay-chatapp-vercel-frontend-asswfk7ac-dakshyadavdtus-projects.vercel.app';
+  assert(origins7.isAllowedOrigin(vercelPreview) === true, 'Vercel preview origin allowed by wildcard');
+  assert(origins7.isAllowedOrigin('https://relay-chatapp-vercel-frontend.vercel.app') === true, 'Exact production origin allowed');
+  assert(origins7.isAllowedOrigin('http://relay-chatapp-vercel-frontend-x.vercel.app') === false, 'http not allowed via wildcard');
+  restoreEnv();
+  clearOriginsCache();
+  console.log('PASS: Wildcard origin matching for Vercel preview');
 
   console.log('\nAll origins tests passed.');
   process.exit(0);

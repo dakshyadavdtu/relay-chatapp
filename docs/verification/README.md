@@ -21,6 +21,7 @@ Phase checklists, verification matrices, and smoke tests. Used for QA and regres
 
 | Doc | Path |
 |-----|------|
+| **CORS preflight + login** (Vercel→Render) | [CORS_PREFLIGHT_LOGIN_VERIFICATION.md](CORS_PREFLIGHT_LOGIN_VERIFICATION.md) |
 | Smoke test | [smoke-and-reports/SMOKE_TEST.md](smoke-and-reports/SMOKE_TEST.md) |
 | Phase 1–6 matrix | [phase1/PHASE1-6_VERIFICATION_MATRIX.md](phase1/PHASE1-6_VERIFICATION_MATRIX.md) |
 | Phase 7 E2E | [phase7/PHASE7_E2E_VERIFICATION.md](phase7/PHASE7_E2E_VERIFICATION.md) |

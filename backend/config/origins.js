@@ -14,10 +14,11 @@
  *
  * In dev: isAllowedOrigin also allows any localhost/127.0.0.1 with any port.
  *
- * Optional CORS_ORIGIN_PATTERNS (comma-separated): controlled wildcard patterns.
- * Only these two pattern strings are accepted (safe RegExp, https-only, full-origin match):
- *   https://relay-chatapp-vercel-frontend-*.vercel.app
- *   https://relay-chatapp-vercel-frontend-git-*.vercel.app
+ * Wildcard allowlist entries (in CORS_ORIGINS, CORS_ORIGIN, or CORS_ORIGIN_PATTERNS):
+ *   - Any entry containing '*' is treated as a wildcard over the host portion.
+ *   - Only https:// is allowed for wildcards (http:// is not allowed via wildcard).
+ *   - Examples: https://relay-chatapp-vercel-frontend.vercel.app (exact),
+ *     https://relay-chatapp-vercel-frontend-*.vercel.app, https://*.vercel.app
  */
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -27,42 +28,68 @@ const DEV_DEFAULTS = [
   'http://127.0.0.1:5173',
 ];
 
-/** Only these pattern strings are allowed; * becomes [a-zA-Z0-9-]+ for full-origin match. */
-const ALLOWED_ORIGIN_PATTERN_STRINGS = [
-  'https://relay-chatapp-vercel-frontend-*.vercel.app',
-  'https://relay-chatapp-vercel-frontend-git-*.vercel.app',
-];
+/** Regex cache for wildcard patterns (pattern string -> RegExp). */
+const wildcardRegexCache = new Map();
+
+/**
+ * Converts a wildcard origin pattern to a RegExp for full-origin match.
+ * Escapes regex special chars, then replaces * with .*.
+ * Only use for patterns that start with https:// and contain *.
+ *
+ * @param {string} pattern - e.g. "https://relay-chatapp-vercel-frontend-*.vercel.app"
+ * @returns {RegExp}
+ */
+function wildcardToRegExp(pattern) {
+  if (wildcardRegexCache.has(pattern)) return wildcardRegexCache.get(pattern);
+  // Placeholder for * so we don't escape it, then escape regex specials, then replace * with .*
+  const escaped = pattern
+    .replace(/\*/g, '\u0000')
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\u0000/g, '.*');
+  const re = new RegExp('^' + escaped + '$');
+  wildcardRegexCache.set(pattern, re);
+  return re;
+}
+
+/**
+ * Validates a wildcard origin pattern for env validation.
+ * Must be https:// only, origin-shaped (no path), and contain at least one *.
+ *
+ * @param {string} patternStr - Trimmed pattern string
+ * @returns {boolean}
+ */
+function validateWildcardOriginPattern(patternStr) {
+  if (typeof patternStr !== 'string' || !patternStr.trim()) return false;
+  const s = patternStr.trim();
+  if (!s.startsWith('https://') || !s.includes('*')) return false;
+  // No path: after "https://" there must be no further /
+  if (s.slice(8).includes('/')) return false;
+  return true;
+}
 
 /**
  * Validates that a pattern string is one of the allowed origin patterns (for env validation).
+ * @deprecated Prefer wildcard entries in CORS_ORIGINS; still supported for backward compat.
  * @param {string} patternStr - Trimmed pattern string from CORS_ORIGIN_PATTERNS
  * @returns {boolean}
  */
 function validateOriginPatternString(patternStr) {
-  return typeof patternStr === 'string' && ALLOWED_ORIGIN_PATTERN_STRINGS.includes(patternStr);
+  return validateWildcardOriginPattern(patternStr);
 }
 
-function compileOriginPattern(patternStr) {
-  if (!ALLOWED_ORIGIN_PATTERN_STRINGS.includes(patternStr)) return null;
-  if (patternStr === 'https://relay-chatapp-vercel-frontend-*.vercel.app') {
-    return /^https:\/\/relay-chatapp-vercel-frontend-[a-zA-Z0-9-]+\.vercel\.app$/;
-  }
-  if (patternStr === 'https://relay-chatapp-vercel-frontend-git-*.vercel.app') {
-    return /^https:\/\/relay-chatapp-vercel-frontend-git-[a-zA-Z0-9-]+\.vercel\.app$/;
-  }
-  return null;
+/** Remove trailing slash(es) from env origin/pattern so https://x/ -> https://x */
+function stripTrailingSlash(s) {
+  return typeof s === 'string' ? s.replace(/\/+$/, '') : s;
 }
 
 function parseOriginPatterns() {
   const raw = (process.env.CORS_ORIGIN_PATTERNS || '').trim();
   if (!raw) return [];
-  const list = raw.split(',').map((s) => s.trim()).filter(Boolean);
-  const regexes = [];
-  for (const entry of list) {
-    const re = compileOriginPattern(entry);
-    if (re) regexes.push(re);
-  }
-  return regexes;
+  return raw
+    .split(',')
+    .map((s) => stripTrailingSlash(s.trim()))
+    .filter(Boolean)
+    .filter(validateWildcardOriginPattern);
 }
 
 /**
@@ -99,16 +126,36 @@ function normalizeOrigin(input) {
 }
 
 function parse() {
+  // Prefer CORS_ORIGINS (comma-separated), else CORS_ORIGIN (single). Trim and normalize trailing slash.
   const corsOrigins = (process.env.CORS_ORIGINS || '').trim();
+  let list = [];
   if (corsOrigins) {
-    const list = corsOrigins.split(',').map((s) => s.trim()).filter(Boolean);
-    if (list.length > 0) {
-      return list.map((entry) => normalizeOrigin(entry));
+    list = corsOrigins.split(',').map((s) => stripTrailingSlash(s.trim())).filter(Boolean);
+  }
+  if (list.length === 0) {
+    const corsOrigin = (process.env.CORS_ORIGIN || '').trim();
+    if (corsOrigin) list = [stripTrailingSlash(corsOrigin)];
+  }
+  if (list.length === 0) return DEV_DEFAULTS;
+
+  const out = [];
+  for (const entry of list) {
+    if (entry.includes('*')) {
+      if (validateWildcardOriginPattern(entry)) out.push(entry);
+    } else {
+      try {
+        out.push(normalizeOrigin(entry));
+      } catch {
+        // Skip invalid entries
+      }
     }
   }
-  const corsOrigin = (process.env.CORS_ORIGIN || '').trim();
-  if (corsOrigin) return [normalizeOrigin(corsOrigin)];
-  return DEV_DEFAULTS;
+  // Merge CORS_ORIGIN_PATTERNS (wildcard strings only)
+  const patterns = parseOriginPatterns();
+  for (const p of patterns) {
+    if (!out.includes(p)) out.push(p);
+  }
+  return out.length ? out : DEV_DEFAULTS;
 }
 
 /** Dedupe and return array (order preserved, first occurrence wins). */
@@ -126,9 +173,14 @@ let cached = null;
 function getAllowedOrigins() {
   if (cached) return cached;
   const list = parse();
-  const originPatternRegexes = parseOriginPatterns();
-  cached = { allowedOrigins: dedupe(list), originPatternRegexes };
+  cached = { allowedOrigins: dedupe(list) };
   return cached;
+}
+
+/** One-line string of effective allowlist for production startup logs. */
+function getAllowlistSummary() {
+  const { allowedOrigins } = getAllowedOrigins();
+  return allowedOrigins.join(', ');
 }
 
 /**
@@ -164,7 +216,9 @@ function isLocalhostOrigin(origin) {
 }
 
 /**
- * Exact match against allowlist (both sides canonical), or in dev any localhost/127.0.0.1 (any port).
+ * Exact match against allowlist (both sides canonical), or wildcard match for entries containing '*',
+ * or in dev any localhost/127.0.0.1 (any port). Wildcards only match https:// origins.
+ *
  * @param {string} origin
  * @returns {boolean}
  */
@@ -178,13 +232,19 @@ function isAllowedOrigin(origin) {
     return false;
   }
 
-  const { allowedOrigins, originPatternRegexes } = getAllowedOrigins();
+  const { allowedOrigins } = getAllowedOrigins();
   if (allowedOrigins.includes(canonicalOrigin)) return true;
-  if (!isProduction && isLocalhostOrigin(origin)) return true;
-  // Pattern match: https-only, full-origin; no arbitrary domains
-  if (canonicalOrigin.startsWith('https://') && originPatternRegexes.length > 0) {
-    for (const re of originPatternRegexes) {
-      if (re.test(canonicalOrigin)) return true;
+  if (!isProduction && isLocalhostOrigin(canonicalOrigin)) return true;
+  // Wildcard match: only https:// origins; each allowlist entry that contains * is treated as pattern
+  if (canonicalOrigin.startsWith('https://')) {
+    for (const entry of allowedOrigins) {
+      if (entry.includes('*')) {
+        try {
+          if (wildcardToRegExp(entry).test(canonicalOrigin)) return true;
+        } catch {
+          // ignore invalid pattern
+        }
+      }
     }
   }
   return false;
@@ -195,9 +255,13 @@ module.exports = {
   get allowedOrigins() {
     return getAllowedOrigins().allowedOrigins;
   },
+  getAllowlistSummary,
   isAllowedOrigin,
   normalizeOrigin,
+  stripTrailingSlash,
   validateOriginFormat,
+  validateWildcardOriginPattern,
   validateOriginPatternString,
+  wildcardToRegExp,
   isLocalhostOrigin,
 };

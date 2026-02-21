@@ -6,6 +6,11 @@ require('./config/cookieConfig');
 const http = require('http');
 const config = require('./config/constants');
 const app = require('./app');
+
+if (process.env.NODE_ENV === 'production') {
+  const { getAllowlistSummary } = require('./config/origins');
+  console.log('CORS allowlist:', getAllowlistSummary());
+}
 const { attachWebSocketServer } = require('./websocket');
 const redisBus = require('./services/redisBus');
 const { createOnChatMessage, createOnAdminKick } = require('./services/redisBusHandlers');

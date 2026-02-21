@@ -75,16 +75,27 @@ function validateEnv() {
       console.error('Missing required for production: at least one of CORS_ORIGIN, CORS_ORIGINS, or CORS_ORIGIN_PATTERNS must be set.');
       process.exit(1);
     }
-    const { validateOriginFormat, validateOriginPatternString } = require('./origins');
-    for (const origin of originStrings) {
-      if (!validateOriginFormat(origin)) {
-        console.error('CORS_ORIGIN / CORS_ORIGINS entry must be an origin only, e.g. https://app.com (no path/query/hash).');
-        process.exit(1);
+    const { validateOriginFormat, validateWildcardOriginPattern, stripTrailingSlash } = require('./origins');
+    for (const raw of originStrings) {
+      const entry = stripTrailingSlash(raw.trim());
+      if (!entry) continue;
+      if (entry.includes('*')) {
+        if (!validateWildcardOriginPattern(entry)) {
+          console.error('CORS_ORIGIN / CORS_ORIGINS wildcard entry must be https only, no path, e.g. https://*.vercel.app');
+          process.exit(1);
+        }
+      } else {
+        if (!validateOriginFormat(entry)) {
+          console.error('CORS_ORIGIN / CORS_ORIGINS entry must be an origin only, e.g. https://app.com (no path/query/hash).');
+          process.exit(1);
+        }
       }
     }
-    for (const pattern of patternStrings) {
-      if (!validateOriginPatternString(pattern)) {
-        console.error('CORS_ORIGIN_PATTERNS entry must be one of the allowed pattern strings (see config/origins.js).');
+    for (const raw of patternStrings) {
+      const pattern = stripTrailingSlash(raw.trim());
+      if (!pattern) continue;
+      if (!validateWildcardOriginPattern(pattern)) {
+        console.error('CORS_ORIGIN_PATTERNS entry must be a wildcard origin: https only, no path, e.g. https://*.vercel.app');
         process.exit(1);
       }
     }

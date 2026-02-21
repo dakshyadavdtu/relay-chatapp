@@ -19,10 +19,11 @@ const uploadsDir = path.resolve(__dirname, 'storage', '_data', 'uploads');
 app.use('/uploads', express.static(uploadsDir));
 
 const isDev = process.env.NODE_ENV !== 'production';
-// CSP connect-src: allow self + WebSocket. Dev: localhost origins (Vite 5173, backend 3001). Prod: allowedOrigins + ws/wss.
+// CSP connect-src: allow self + WebSocket. Dev: localhost origins (Vite 5173, backend 3001). Prod: exact allowedOrigins only (no wildcard patterns; CSP does not support host wildcards).
+const exactOriginsOnly = (Array.isArray(allowedOrigins) ? allowedOrigins : []).filter((o) => typeof o === 'string' && !o.includes('*'));
 const connectSrc = isDev
   ? ["'self'", 'ws:', 'wss:', 'http://localhost:5173', 'http://localhost:3001', 'ws://localhost:3001', 'http://127.0.0.1:5173', 'http://127.0.0.1:3001', 'ws://127.0.0.1:3001']
-  : ["'self'", 'ws:', 'wss:', ...allowedOrigins];
+  : ["'self'", 'ws:', 'wss:', ...exactOriginsOnly];
 
 // Security headers: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
 const cspDirectives = {
