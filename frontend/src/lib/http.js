@@ -86,10 +86,8 @@ function doRefresh() {
   if (inFlightRefreshPromise != null) {
     return inFlightRefreshPromise;
   }
-  const refreshUrl =
-    typeof window !== 'undefined' && window.location?.origin
-      ? `${window.location.origin}${REFRESH_PATH}`
-      : REFRESH_PATH;
+  const origin = getApiOrigin();
+  const refreshUrl = origin ? `${origin}${REFRESH_PATH}` : REFRESH_PATH;
   inFlightRefreshPromise = (async () => {
     try {
       const refreshRes = await fetch(refreshUrl, {
@@ -147,10 +145,8 @@ async function runWsRefreshLoop() {
   try {
     const result = await doRefresh();
     if (result.status === 401 || result.status === 403) {
-      const refreshUrl =
-        typeof window !== 'undefined' && window.location?.origin
-          ? `${window.location.origin}${REFRESH_PATH}`
-          : REFRESH_PATH;
+      const origin = getApiOrigin();
+      const refreshUrl = origin ? `${origin}${REFRESH_PATH}` : REFRESH_PATH;
       const logoutContext =
         typeof window !== 'undefined'
           ? {
@@ -223,13 +219,24 @@ export class AuthDegradedError extends Error {
 }
 
 /**
+ * Backend origin for API requests. In production (e.g. Vercel frontend + Render backend),
+ * set VITE_BACKEND_HTTP_URL so all apiFetch and refresh go to Render. In dev or same-origin, unset = use current origin.
+ * @returns {string} Origin with no trailing slash, or '' when no origin (relative URLs).
+ */
+export function getApiOrigin() {
+  const raw = import.meta.env.VITE_BACKEND_HTTP_URL;
+  if (typeof raw === 'string' && raw.trim()) return raw.trim().replace(/\/$/, '');
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
+  return '';
+}
+
+/**
  * @param {string} path - Path starting with /api (e.g. /api/me)
  * @param {RequestInit & { body?: object, __retried?: boolean }} options - fetch options; body object is JSON.stringify'd; __retried is internal
  * @returns {Promise<{ success: boolean, data?: any, error?: string, code?: string }>} Parsed JSON
  */
 function apiBaseUrl() {
-  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
-  return '';
+  return getApiOrigin();
 }
 
 /** DEV only: detect /api/chats call burst (possible regression). Reset every 2s; warn once if >2 in window. */
@@ -334,10 +341,8 @@ export async function apiFetch(path, options = {}) {
       throw err;
     }
 
-    const refreshUrl =
-      typeof window !== 'undefined' && window.location?.origin
-        ? `${window.location.origin}${REFRESH_PATH}`
-        : REFRESH_PATH;
+    const origin = getApiOrigin();
+    const refreshUrl = origin ? `${origin}${REFRESH_PATH}` : REFRESH_PATH;
 
     let refreshResult;
     try {

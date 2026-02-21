@@ -2,6 +2,7 @@
  * Upload API — image upload for group thumbnails etc.
  * POST /api/uploads/image (multipart form "file"), returns { url }.
  */
+import { getApiOrigin } from "@/lib/http";
 
 /**
  * Upload an image file. Uses multipart/form-data.
@@ -15,8 +16,8 @@ export async function uploadImage(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const base = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
-  const res = await fetch(`${base}/api/uploads/image`, {
+  const base = getApiOrigin();
+  const res = await fetch(base ? `${base}/api/uploads/image` : "/api/uploads/image", {
     method: "POST",
     credentials: "include", // Session cookie required
     body: formData,

@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Bug } from 'lucide-react';
+import { getApiOrigin } from '@/lib/http';
 
 const ENABLE_DEV_TOOLS = typeof import.meta !== 'undefined' && import.meta.env?.VITE_ENABLE_DEV_TOOLS === 'true';
 
@@ -19,8 +20,8 @@ export function AuthDebugButton() {
     setError(null);
     setResult(null);
     try {
-      const base = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-      const res = await fetch(`${base}/api/dev/debug/auth`, { method: 'GET', credentials: 'include' });
+      const base = getApiOrigin();
+      const res = await fetch(base ? `${base}/api/dev/debug/auth` : '/api/dev/debug/auth', { method: 'GET', credentials: 'include' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data?.error || `HTTP ${res.status}`);

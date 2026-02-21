@@ -1,7 +1,7 @@
 /**
  * Chat HTTP API. All calls go through Vite proxy /api.
  */
-import { apiFetch } from "@/lib/http";
+import { apiFetch, getApiOrigin } from "@/lib/http";
 import { getAuthState } from "@/state/auth.state";
 import { getServerConversationId } from "../utils/chatId.js";
 
@@ -64,8 +64,8 @@ export async function getHistory(chatId, { limit = 50, beforeId } = {}) {
  * @returns {Promise<{ ok: boolean, error?: string, status?: number }>}
  */
 export async function exportChatJson(chatId) {
-  const base = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
-  const url = `${base}/api/export/chat/${encodeURIComponent(chatId)}.json`;
+  const base = getApiOrigin();
+  const url = base ? `${base}/api/export/chat/${encodeURIComponent(chatId)}.json` : `/api/export/chat/${encodeURIComponent(chatId)}.json`;
   // TEMP Phase 1 debug: remove in Phase 2
   console.debug("[export] exportChatJson URL=", url);
   const res = await fetch(url, { method: "GET", credentials: "include" }); // Session cookie required
@@ -103,8 +103,8 @@ export async function exportChatJson(chatId) {
  * @returns {Promise<{ ok: boolean, error?: string, status?: number }>}
  */
 export async function exportChatPdf(chatId) {
-  const base = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "";
-  const url = `${base}/api/export/chat/${encodeURIComponent(chatId)}.pdf`;
+  const base = getApiOrigin();
+  const url = base ? `${base}/api/export/chat/${encodeURIComponent(chatId)}.pdf` : `/api/export/chat/${encodeURIComponent(chatId)}.pdf`;
   const res = await fetch(url, { method: "GET", credentials: "include" }); // Session cookie required
   if (!res.ok) {
     const text = await res.text();

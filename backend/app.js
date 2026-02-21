@@ -43,13 +43,12 @@ app.use(
 // CORS: set Access-Control-* when Origin is allowed (before /api so all API routes get headers)
 app.use(corsMiddleware);
 
-// Health check for infra only (not part of HTTP subsystem)
-app.get('/health', (req, res) => {
+// Health check for infra only (not part of HTTP subsystem). /api/health alias for frontend (same payload).
+function healthHandler(req, res) {
   res.status(200).json({ ok: true });
-});
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ ok: true });
-});
+}
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 // Metrics snapshot: counters + timestamp. Guarded by metricsAccessGuard (secret/open/disabled/admin).
 const { metricsAccessGuard } = require('./http/middleware/metricsAccess.middleware');
