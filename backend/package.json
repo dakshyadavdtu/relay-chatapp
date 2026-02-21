@@ -1,0 +1,37 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Production WebSocket chat backend",
+  "main": "server.js",
+  "scripts": {
+    "obs:selfcheck": "node scripts/observability.selfcheck.js",
+    "dev": "NODE_ENV=development node server.js",
+    "dev:presence": "npm run dev",
+    "dev:proxy": "NODE_ENV=development PORT=8000 node server.js",
+    "start": "node server.js",
+    "start:prod": "NODE_ENV=production node server.js",
+    "test": "node -r dotenv/config scripts/verify-baseline.js && node tests/env-validate-refresh-pepper.required.spawn.test.js && node -r dotenv/config tests/origins.test.js && node -r dotenv/config tests/ack-drop.test.js && node -r dotenv/config tests/backpressure-enforcement.test.js && node -r dotenv/config tests/db-idempotency.test.js && node -r dotenv/config tests/rate-limit-router.test.js && node -r dotenv/config tests/reconnect/reconnect.test.js && node -r dotenv/config tests/presence/presence-refresh-race.test.js && node -r dotenv/config tests/metrics/metrics.test.js && node -r dotenv/config tests/diagnostics/diagnostics.test.js && node -r dotenv/config tests/auth/roles.test.js && node -r dotenv/config tests/auth/auth-contract-6b.test.js && node -r dotenv/config tests/suspicious/suspicious.test.js && node -r dotenv/config tests/admin/admin-endpoints.test.js && node -r dotenv/config tests/admin/admin-report-context-window.test.js && node -r dotenv/config tests/admin/phase2-admin-users.test.js && node -r dotenv/config tests/admin/admin.messages.test.js && node -r dotenv/config tests/observability.safety.test.js && node -r dotenv/config tests/observability/aggregators/messages.test.js && node -r dotenv/config tests/api/api-contract.test.js && node -r dotenv/config tests/http/body-limit.test.js && node -r dotenv/config tests/chat/read-cursor-persistence.test.js && node --test tests/redis/*.test.js",
+    "test:baseline": "node scripts/verify-baseline.js",
+    "test:origins": "node -r dotenv/config tests/origins.test.js",
+    "test:presence": "node -r dotenv/config tests/presence/presence-refresh-race.test.js",
+    "test:read-cursor": "node -r dotenv/config tests/chat/read-cursor-persistence.test.js",
+    "test:context-window": "node -r dotenv/config tests/admin/admin-report-context-window.test.js",
+    "test:enforce": "node scripts/enforce-state-ownership.js",
+    "check:rootadmin": "node -r dotenv/config scripts/check-root-admin-upsert.js",
+    "verify:report-context": "node -r dotenv/config scripts/verify-report-context.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "mongodb": "^7.1.0",
+    "multer": "^2.0.2",
+    "nodemailer": "^8.0.1",
+    "pdfkit": "^0.17.2",
+    "redis": "^4.7.0",
+    "ws": "^8.18.0",
+    "zod": "^4.3.6"
+  }
+}

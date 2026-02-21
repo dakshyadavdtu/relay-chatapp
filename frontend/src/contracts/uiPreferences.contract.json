@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "description": "UI Preferences Contract — global (chat + settings + layout). Extracted from myset copy 2 and mychat original copy 7.",
+  "defaults": {
+    "theme": "light",
+    "textSize": "medium",
+    "density": "comfortable",
+    "reducedMotion": false,
+    "enterToSend": true,
+    "messageGrouping": true,
+    "soundNotifications": true,
+    "desktopNotifications": false,
+    "desktopNotificationMode": "background_only"
+  },
+  "preferences": {
+    "theme": {
+      "type": "enum",
+      "values": ["light", "dark", "system"],
+      "default": "light",
+      "affects": ["AppShell", "Chat", "Settings", "Layout"],
+      "persist": "client",
+      "source": "myset copy 2 (system); mychat has light/dark only",
+      "notes": "system uses prefers-color-scheme; myset supports it, mychat does not"
+    },
+    "textSize": {
+      "type": "enum",
+      "values": ["small", "medium", "large"],
+      "default": "medium",
+      "affects": ["AppShell", "Chat", "Settings", "Layout"],
+      "persist": "client",
+      "source": "both"
+    },
+    "density": {
+      "type": "enum",
+      "values": ["comfortable", "compact"],
+      "default": "comfortable",
+      "affects": ["Chat", "Settings", "Layout"],
+      "persist": "client",
+      "source": "both",
+      "chatSpecific": true,
+      "notes": "Affects msg-list gap, msg-bubble padding, sidebar-item padding, chat-header padding"
+    },
+    "reducedMotion": {
+      "type": "boolean",
+      "values": [true, false],
+      "default": false,
+      "affects": ["AppShell", "Chat", "Settings", "Layout"],
+      "persist": "client",
+      "source": "both"
+    },
+    "enterToSend": {
+      "type": "boolean",
+      "values": [true, false],
+      "default": true,
+      "affects": ["Chat"],
+      "persist": "client",
+      "source": "both",
+      "chatSpecific": true,
+      "notes": "Send message on Enter key; false = Shift+Enter to send"
+    },
+    "messageGrouping": {
+      "type": "boolean",
+      "values": [true, false],
+      "default": true,
+      "affects": ["Chat"],
+      "persist": "client",
+      "source": "both",
+      "chatSpecific": true,
+      "notes": "Combine consecutive messages from same user"
+    },
+    "soundNotifications": {
+      "type": "boolean",
+      "values": [true, false],
+      "default": true,
+      "affects": ["Chat"],
+      "persist": "client",
+      "source": "both",
+      "chatSpecific": true,
+      "aliases": ["soundEnabled"],
+      "notes": "myset uses soundEnabled; mychat uses soundNotifications"
+    },
+    "desktopNotifications": {
+      "type": "boolean",
+      "values": [true, false],
+      "default": false,
+      "affects": ["Chat"],
+      "persist": "client",
+      "source": "both",
+      "chatSpecific": true,
+      "notes": "Browser Notification API for new messages"
+    },
+    "desktopNotificationMode": {
+      "type": "enum",
+      "values": ["background_only", "when_not_active", "always"],
+      "default": "background_only",
+      "affects": ["Chat"],
+      "persist": "client",
+      "source": "both",
+      "chatSpecific": true,
+      "notes": "When to show: background_only=tab/window unfocused; when_not_active=conversation not focused; always=even when focused (not self-sent)"
+    }
+  },
+  "uiBindings": [
+    {
+      "pref": "theme",
+      "appliesTo": "document.documentElement",
+      "mechanism": "class",
+      "valueMap": {
+        "light": "light",
+        "dark": "dark",
+        "system": "light or dark based on prefers-color-scheme"
+      }
+    },
+    {
+      "pref": "textSize",
+      "appliesTo": "document.documentElement",
+      "mechanism": "class",
+      "valueMap": {
+        "small": "text-small",
+        "medium": "text-medium",
+        "large": "text-large"
+      }
+    },
+    {
+      "pref": "density",
+      "appliesTo": "document.documentElement",
+      "mechanism": "class",
+      "valueMap": {
+        "comfortable": "density-comfortable",
+        "compact": "density-compact"
+      }
+    },
+    {
+      "pref": "reducedMotion",
+      "appliesTo": "document.documentElement",
+      "mechanism": "class",
+      "valueMap": {
+        "true": "reduced-motion",
+        "false": "(class removed)"
+      }
+    },
+    {
+      "pref": "enterToSend",
+      "appliesTo": "ChatWindow input handler",
+      "mechanism": "behavior",
+      "notes": "Keyboard handler logic; no CSS"
+    },
+    {
+      "pref": "messageGrouping",
+      "appliesTo": "ChatWindow message list",
+      "mechanism": "behavior",
+      "notes": "Render logic for grouping; no CSS"
+    },
+    {
+      "pref": "soundNotifications",
+      "appliesTo": "Chat message receive handler",
+      "mechanism": "behavior",
+      "notes": "AudioContext play on new message"
+    },
+    {
+      "pref": "desktopNotifications",
+      "appliesTo": "Chat message receive handler",
+      "mechanism": "behavior",
+      "notes": "Notification API on new message"
+    }
+  ],
+  "persistence": {
+    "client": {
+      "mechanism": "localStorage",
+      "key": "chat-settings",
+      "format": "JSON",
+      "notes": "Backend does not support preferences; all persist client-side only"
+    },
+    "server": null
+  }
+}

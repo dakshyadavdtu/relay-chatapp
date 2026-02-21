@@ -1,0 +1,375 @@
+{
+  "version": "1.0",
+  "generated": "2025-02-10",
+  "http": {
+    "basePath": "/api",
+    "endpoints": [
+      {
+        "method": "GET",
+        "path": "/health",
+        "auth": false,
+        "requestFields": {},
+        "successResponse": { "ok": true },
+        "errorResponse": { "success": false, "error": "string", "code": "string" }
+      },
+      {
+        "method": "POST",
+        "path": "/register",
+        "auth": false,
+        "requestFields": {
+          "username": { "required": true, "type": "string", "minLength": 3, "maxLength": 50 },
+          "password": { "required": true, "type": "string", "minLength": 6 }
+        },
+        "successResponse": { "success": true, "data": { "user": "ApiUser", "capabilities": "object" } },
+        "errorCodes": ["INVALID_USERNAME", "INVALID_PASSWORD"],
+        "status": 201
+      },
+      {
+        "method": "POST",
+        "path": "/login",
+        "auth": false,
+        "requestFields": {
+          "userId": { "required": false, "type": "string" },
+          "username": { "required": false, "type": "string" },
+          "password": { "required": false, "type": "string" }
+        },
+        "successResponse": { "success": true, "data": { "user": "ApiUser", "capabilities": "object" } },
+        "errorCodes": ["INVALID_CREDENTIALS"]
+      },
+      {
+        "method": "POST",
+        "path": "/logout",
+        "auth": false,
+        "requestFields": {},
+        "successResponse": { "success": true, "data": { "message": "string" } }
+      },
+      {
+        "method": "GET",
+        "path": "/me",
+        "auth": true,
+        "requestFields": {},
+        "successResponse": { "success": true, "data": { "user": "ApiUser", "capabilities": "object" } },
+        "errorCodes": ["UNAUTHORIZED"]
+      },
+      {
+        "method": "GET",
+        "path": "/chats",
+        "auth": true,
+        "requestFields": {},
+        "successResponse": { "success": true, "data": { "chats": "Chat[]" } },
+        "errorCodes": ["UNAUTHORIZED"]
+      },
+      {
+        "method": "GET",
+        "path": "/chats/:chatId",
+        "auth": true,
+        "requestFields": { "chatId": { "required": true, "in": "path" } },
+        "successResponse": { "success": true, "data": "Chat" },
+        "errorCodes": ["UNAUTHORIZED", "INVALID_CHAT_ID", "CHAT_ACCESS_DENIED"]
+      },
+      {
+        "method": "POST",
+        "path": "/chats/:chatId/read",
+        "auth": true,
+        "requestFields": {
+          "chatId": { "required": true, "in": "path" },
+          "lastReadMessageId": { "required": true, "in": "body", "type": "string" }
+        },
+        "successResponse": { "success": true, "data": { "ok": true } },
+        "errorCodes": ["UNAUTHORIZED", "INVALID_PAYLOAD", "INVALID_CHAT_ID", "CHAT_ACCESS_DENIED", "INVALID_MESSAGE_ID", "MARK_READ_ERROR"]
+      },
+      {
+        "method": "POST",
+        "path": "/chat/send",
+        "auth": true,
+        "requestFields": {
+          "recipientId": { "required": true, "type": "string", "trim": true },
+          "content": { "required": true, "type": "string", "maxLength": 10000 },
+          "clientMessageId": { "required": false, "type": "string" }
+        },
+        "successResponse": { "success": true, "data": { "message": "ApiMessage" } },
+        "errorCodes": ["UNAUTHORIZED", "INVALID_PAYLOAD", "CONTENT_TOO_LONG", "MESSAGE_SEND_ERROR"],
+        "status": 201
+      },
+      {
+        "method": "GET",
+        "path": "/chat",
+        "auth": true,
+        "requestFields": {
+          "chatId": { "required": true, "in": "query" },
+          "limit": { "required": true, "in": "query", "type": "number", "min": 1 },
+          "beforeId": { "required": false, "in": "query", "type": "string" }
+        },
+        "successResponse": { "success": true, "data": { "chatId": "string", "messages": "ApiMessage[]", "nextCursor": "string|null", "hasMore": "boolean" } },
+        "errorCodes": ["UNAUTHORIZED", "INVALID_CHAT_ID", "CHAT_ACCESS_DENIED", "PAGINATION_REQUIRED", "INVALID_LIMIT", "HISTORY_ERROR"]
+      },
+      {
+        "method": "GET",
+        "path": "/chat/:conversationId",
+        "auth": true,
+        "requestFields": {
+          "conversationId": { "required": true, "in": "path" },
+          "limit": { "required": true, "in": "query" },
+          "beforeId": { "required": false, "in": "query" }
+        },
+        "successResponse": { "success": true, "data": { "chatId": "string", "messages": "ApiMessage[]", "nextCursor": "string|null", "hasMore": "boolean" } },
+        "errorCodes": ["UNAUTHORIZED", "INVALID_CHAT_ID", "CHAT_ACCESS_DENIED", "PAGINATION_REQUIRED", "INVALID_LIMIT", "HISTORY_ERROR"]
+      },
+      {
+        "method": "GET",
+        "path": "/users/search",
+        "auth": true,
+        "requestFields": { "q": { "required": true, "in": "query", "type": "string" } },
+        "successResponse": { "success": true, "data": { "users": "ApiUser[]" } },
+        "errorCodes": ["UNAUTHORIZED", "INVALID_QUERY"]
+      },
+      {
+        "method": "GET",
+        "path": "/users/me",
+        "auth": true,
+        "requestFields": {},
+        "successResponse": { "success": true, "data": { "user": "ApiUser" } },
+        "errorCodes": ["UNAUTHORIZED"]
+      },
+      {
+        "method": "GET",
+        "path": "/users/:id",
+        "auth": true,
+        "requestFields": { "id": { "required": true, "in": "path" } },
+        "successResponse": { "success": true, "data": { "user": "ApiUser" } },
+        "errorCodes": ["UNAUTHORIZED", "INVALID_USER_ID", "USER_NOT_FOUND"]
+      },
+      {
+        "method": "GET",
+        "path": "/sessions/active",
+        "auth": true,
+        "requestFields": {},
+        "successResponse": { "success": true, "data": "object" },
+        "errorCodes": ["UNAUTHORIZED"]
+      },
+      {
+        "method": "POST",
+        "path": "/sessions/logout",
+        "auth": true,
+        "requestFields": {},
+        "successResponse": { "success": true, "data": "object" },
+        "errorCodes": ["UNAUTHORIZED"]
+      },
+      {
+        "method": "GET",
+        "path": "/admin/dashboard",
+        "auth": true,
+        "roles": ["ADMIN"],
+        "requestFields": {},
+        "successResponse": {
+          "success": true,
+          "data": {
+            "onlineUsers": "number",
+            "messagesPerSecond": "number",
+            "messagesPerSecondAvg60": "number",
+            "messagesPerSecondPeak": "number",
+            "messagesPerSecondP95": "number",
+            "messagesLastMinute": "number",
+            "latencyAvg": "number",
+            "latencyP95": "number",
+            "suspiciousFlags": "number",
+            "adminsCount": "number",
+            "regularUsersCount": "number"
+          }
+        },
+        "errorCodes": ["UNAUTHORIZED", "FORBIDDEN", "DASHBOARD_ERROR"]
+      },
+      {
+        "method": "GET",
+        "path": "/admin/users",
+        "auth": true,
+        "roles": ["ADMIN"],
+        "requestFields": {
+          "q": { "required": false, "in": "query", "type": "string" },
+          "limit": { "required": false, "in": "query", "type": "number" },
+          "cursor": { "required": false, "in": "query", "type": "string" }
+        },
+        "successResponse": {
+          "success": true,
+          "data": {
+            "users": "AdminUser[]",
+            "nextCursor": "string|null",
+            "total": "number",
+            "notAvailable": "string[]"
+          }
+        },
+        "errorCodes": ["UNAUTHORIZED", "FORBIDDEN", "USERS_ERROR"]
+      },
+      {
+        "method": "GET",
+        "path": "/admin/diagnostics/:userId",
+        "auth": true,
+        "roles": ["ADMIN"],
+        "requestFields": { "userId": { "required": true, "in": "path" } },
+        "successResponse": { "success": true, "data": "object" },
+        "errorCodes": ["UNAUTHORIZED", "NOT_AUTHORIZED"]
+      },
+      {
+        "method": "POST",
+        "path": "/admin/users/:id/role",
+        "auth": true,
+        "roles": ["ADMIN"],
+        "requestFields": { "id": { "required": true, "in": "path" }, "role": { "required": true, "in": "body" } },
+        "successResponse": { "success": true, "data": "object" },
+        "errorCodes": ["UNAUTHORIZED", "NOT_AUTHORIZED"]
+      },
+      {
+        "method": "GET",
+        "path": "/admin/reports",
+        "auth": true,
+        "roles": ["ADMIN"],
+        "requestFields": {},
+        "successResponse": {
+          "success": true,
+          "data": {
+            "notAvailable": "boolean",
+            "reason": "string (when notAvailable)"
+          }
+        },
+        "errorCodes": ["UNAUTHORIZED", "FORBIDDEN"]
+      },
+      {
+        "method": "GET",
+        "path": "/admin/reports",
+        "auth": true,
+        "roles": ["ADMIN"],
+        "requestFields": {},
+        "successResponse": {
+          "success": true,
+          "data": {
+            "notAvailable": "boolean",
+            "reason": "string (when notAvailable)"
+          }
+        },
+        "errorCodes": ["UNAUTHORIZED", "FORBIDDEN"]
+      }
+    ],
+    "errorResponseShape": {
+      "success": false,
+      "error": "string",
+      "code": "string"
+    },
+    "successResponseShape": {
+      "success": true,
+      "data": "any"
+    }
+  },
+  "websocket": {
+    "connectionPath": "/ws",
+    "authMechanism": "cookie",
+    "authCookieName": "token",
+    "protocolVersion": "1.0.0",
+    "firstMessageRequired": "HELLO",
+    "incomingMessageTypes": [
+      { "type": "HELLO", "requiredFields": ["version"], "optionalFields": [] },
+      { "type": "MESSAGE_SEND", "requiredFields": ["recipientId", "content"], "optionalFields": ["clientMessageId"] },
+      { "type": "MESSAGE_READ", "requiredFields": ["messageId"], "optionalFields": [] },
+      { "type": "MESSAGE_READ_CONFIRM", "requiredFields": ["messageId"], "optionalFields": [] },
+      { "type": "MESSAGE_DELIVERED_CONFIRM", "requiredFields": ["messageId"], "optionalFields": [] },
+      { "type": "MESSAGE_REPLAY", "requiredFields": [], "optionalFields": ["lastMessageId", "limit"] },
+      { "type": "STATE_SYNC", "requiredFields": [], "optionalFields": ["lastMessageId", "lastReadMessageId"] },
+      { "type": "RESUME", "requiredFields": [], "optionalFields": ["lastSeenMessageId"] },
+      { "type": "PRESENCE_PING", "requiredFields": [], "optionalFields": ["status"] },
+      { "type": "CLIENT_ACK", "requiredFields": ["messageId"], "optionalFields": ["ackType"] },
+      { "type": "PING", "requiredFields": [], "optionalFields": [] },
+      { "type": "TYPING_START", "requiredFields": [], "optionalFields": ["roomId", "targetUserId"] },
+      { "type": "TYPING_STOP", "requiredFields": [], "optionalFields": ["roomId", "targetUserId"] },
+      { "type": "ROOM_CREATE", "requiredFields": ["roomId"], "optionalFields": ["name", "metadata"] },
+      { "type": "ROOM_JOIN", "requiredFields": ["roomId"], "optionalFields": [] },
+      { "type": "ROOM_LEAVE", "requiredFields": ["roomId"], "optionalFields": [] },
+      { "type": "ROOM_MESSAGE", "requiredFields": ["roomId", "content"], "optionalFields": ["clientMessageId", "messageType"] },
+      { "type": "ROOM_INFO", "requiredFields": ["roomId"], "optionalFields": [] },
+      { "type": "ROOM_LIST", "requiredFields": [], "optionalFields": ["includeAll"] },
+      { "type": "ROOM_MEMBERS", "requiredFields": ["roomId"], "optionalFields": [] }
+    ],
+    "outgoingMessageTypes": [
+      { "type": "HELLO_ACK", "fields": ["type", "version"] },
+      { "type": "MESSAGE_ACK", "fields": ["type", "messageId", "clientMessageId", "state", "timestamp", "message"] },
+      { "type": "MESSAGE_RECEIVE", "fields": ["type", "messageId", "senderId", "recipientId", "content", "timestamp", "state"] },
+      { "type": "MESSAGE_ERROR", "fields": ["type", "error", "code", "clientMessageId", "messageId", "details"] },
+      { "type": "ERROR", "fields": ["type", "error", "code", "message"] },
+      { "type": "RATE_LIMIT_WARNING", "fields": ["type", "warning", "remaining", "resetAt", "version"] },
+      { "type": "MESSAGE_REPLAY_COMPLETE", "fields": ["type", "messageCount", "lastMessageId", "requestedAfter"] },
+      { "type": "ROOM_CREATE_RESPONSE", "fields": ["type", "success", "roomId", "name", "joined", "timestamp"], "errorFields": ["error", "code"] },
+      { "type": "ROOM_JOIN_RESPONSE", "fields": ["type", "success", "roomId", "roomInfo", "members", "alreadyMember", "timestamp"], "errorFields": ["error", "code"] },
+      { "type": "ROOM_LEAVE_RESPONSE", "fields": ["type", "success", "roomId", "timestamp"], "errorFields": ["error", "code"] },
+      { "type": "ROOM_MESSAGE_RESPONSE", "fields": ["type", "success", "roomId", "roomMessageId", "messageIds", "sentCount", "memberCount", "timestamp", "duplicate"], "errorFields": ["error", "code"] },
+      { "type": "ROOM_INFO_RESPONSE", "fields": ["type", "success", "roomId", "roomInfo", "members", "timestamp"], "errorFields": ["error", "code"] },
+      { "type": "ROOM_LIST_RESPONSE", "fields": ["type", "success", "rooms", "count", "timestamp"], "errorFields": ["error", "code"] },
+      { "type": "ROOM_MEMBERS_RESPONSE", "fields": ["type", "success", "roomId", "members", "count", "timestamp"], "errorFields": ["error", "code"] },
+      { "type": "ROOM_MEMBER_JOINED", "fields": ["type", "roomId", "userId", "timestamp"] },
+      { "type": "ROOM_MEMBER_LEFT", "fields": ["type", "roomId", "userId", "timestamp", "reason"] },
+      { "type": "ROOM_MESSAGE", "fields": ["type", "messageId", "roomId", "roomMessageId", "senderId", "content", "timestamp", "messageType"] }
+    ],
+    "ackSemantics": {
+      "MESSAGE_ACK": "Echoed after persist; includes clientMessageId for mapping; includes full message object"
+    },
+    "idempotencyRules": {
+      "MESSAGE_SEND": "(senderId, clientMessageId) is idempotency key; duplicate returns existing message in ACK",
+      "ROOM_CREATE": "Not idempotent; duplicate roomId returns CREATE_FAILED",
+      "ROOM_JOIN": "Idempotent; already member returns success with alreadyMember:true",
+      "ROOM_MESSAGE": "(userId, roomId, clientMessageId) is idempotency key; duplicate returns ROOM_MESSAGE_RESPONSE with duplicate:true"
+    },
+    "limits": {
+      "maxContentLength": 10000,
+      "maxPayloadSizeBytes": 1048576,
+      "rateLimitMessagesPerWindow": 100,
+      "rateLimitWindowMs": 60000
+    }
+  },
+  "errorCodes": [
+    "AUTH_REQUIRED",
+    "UNAUTHORIZED",
+    "INVALID_PAYLOAD",
+    "INVALID_SCHEMA",
+    "INVALID_FIELD_TYPE",
+    "MISSING_FIELD",
+    "MISSING_TYPE",
+    "INVALID_JSON",
+    "INVALID_ACK_TYPE",
+    "INVALID_TRANSITION",
+    "MESSAGE_NOT_FOUND",
+    "PERSISTENCE_ERROR",
+    "REPLAY_ERROR",
+    "SYNC_ERROR",
+    "VERSION_MISMATCH",
+    "RATE_LIMIT_EXCEEDED",
+    "RECIPIENT_BUFFER_FULL",
+    "PAYLOAD_TOO_LARGE",
+    "NOT_AUTHORIZED",
+    "ROOM_NOT_FOUND",
+    "ROOM_FULL",
+    "NOT_A_MEMBER",
+    "MISSING_ROOM_ID",
+    "CREATE_FAILED",
+    "JOIN_FAILED",
+    "LEAVE_FAILED",
+    "MISSING_CONTENT",
+    "CONTENT_TOO_LONG",
+    "BROADCAST_FAILED",
+    "INVALID_LAST_MESSAGE_ID",
+    "CONNECTION_LIMIT",
+    "HELLO_REQUIRED",
+    "HELLO_ALREADY_SENT",
+    "UNSUPPORTED_PROTOCOL_VERSION",
+    "INVALID_CREDENTIALS",
+    "INVALID_USERNAME",
+    "INVALID_PASSWORD",
+    "INVALID_CHAT_ID",
+    "CHAT_ACCESS_DENIED",
+    "PAGINATION_REQUIRED",
+    "INVALID_LIMIT",
+    "HISTORY_ERROR",
+    "INVALID_QUERY",
+    "INVALID_USER_ID",
+    "USER_NOT_FOUND",
+    "MESSAGE_SEND_ERROR",
+    "DASHBOARD_ERROR",
+    "USERS_ERROR"
+  ]
+}

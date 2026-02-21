@@ -1,0 +1,192 @@
+{
+  "phase": "3.0",
+  "modules": {
+    "auth": [
+      {
+        "id": "auth-otp",
+        "title": "OTP verification page",
+        "module": "auth",
+        "severity": "p1",
+        "status": "missing",
+        "source_reference": "updated-relay-auth-main/frontend/src/pages/VerifyOTP.js",
+        "target_reference": null,
+        "notes": "Source has VerifyOTP; target has no OTP flow."
+      },
+      {
+        "id": "auth-redirect",
+        "title": "Login → Chat redirect on auth success",
+        "module": "auth",
+        "severity": "p1",
+        "status": "partial",
+        "source_reference": "AuthContext or similar",
+        "target_reference": "src/pages/auth/Login.jsx, routes.jsx",
+        "notes": "No post-login redirect to /chat."
+      }
+    ],
+    "chat": [
+      {
+        "id": "chat-dir",
+        "title": "pages/chat/ directory per contract",
+        "module": "chat",
+        "severity": "p0",
+        "status": "missing",
+        "source_reference": "mychat original copy 6/frontend/src/pages/Home.jsx",
+        "target_reference": "src/pages/ChatPlaceholder.jsx",
+        "notes": "Chat entry at pages/ChatPlaceholder.jsx; contract requires pages/chat/."
+      }
+    ],
+    "settings": [
+      {
+        "id": "settings-dir",
+        "title": "pages/settings/ directory per contract",
+        "module": "settings",
+        "severity": "p0",
+        "status": "missing",
+        "source_reference": "myset copy/src/pages/*",
+        "target_reference": "src/pages/Settings.jsx",
+        "notes": "Settings at pages/Settings.jsx; contract requires pages/settings/."
+      },
+      {
+        "id": "settings-components",
+        "title": "components/settings/ directory per contract",
+        "module": "settings",
+        "severity": "p0",
+        "status": "missing",
+        "source_reference": "myset copy/src/components/SettingsLayout.jsx",
+        "target_reference": "src/components/layout/SettingsModal.jsx",
+        "notes": "SettingsModal in layout/; contract requires components/settings/."
+      },
+      {
+        "id": "settings-layout",
+        "title": "Settings multi-page layout (Profile, Security, Devices, etc.)",
+        "module": "settings",
+        "severity": "p1",
+        "status": "missing",
+        "source_reference": "myset copy/src/components/SettingsLayout.jsx, src/pages/*Page.jsx",
+        "target_reference": null,
+        "notes": "Source has full layout with sub-routes; target has single modal only."
+      }
+    ],
+    "admin": [
+      {
+        "id": "admin-dir",
+        "title": "pages/admin/ directory per contract",
+        "module": "admin",
+        "severity": "p0",
+        "status": "missing",
+        "source_reference": "our admin copy/src/pages/*",
+        "target_reference": "src/pages/AdminPlaceholder.jsx",
+        "notes": "Admin at pages/AdminPlaceholder.jsx; contract requires pages/admin/."
+      },
+      {
+        "id": "admin-components",
+        "title": "components/admin/ directory per contract",
+        "module": "admin",
+        "severity": "p0",
+        "status": "missing",
+        "source_reference": "our admin copy/src/components/layout.jsx",
+        "target_reference": null,
+        "notes": "Admin layout and components not migrated."
+      },
+      {
+        "id": "admin-dashboard",
+        "title": "Admin Dashboard page",
+        "module": "admin",
+        "severity": "p1",
+        "status": "missing",
+        "source_reference": "our admin copy/src/pages/Dashboard.jsx or similar",
+        "target_reference": null,
+        "notes": "Full admin module not integrated."
+      },
+      {
+        "id": "admin-users",
+        "title": "Admin Users page",
+        "module": "admin",
+        "severity": "p1",
+        "status": "missing",
+        "source_reference": "our admin copy/src/pages/UsersPage.jsx or similar",
+        "target_reference": null,
+        "notes": "Full admin module not integrated."
+      },
+      {
+        "id": "admin-reports",
+        "title": "Admin Reports page",
+        "module": "admin",
+        "severity": "p1",
+        "status": "missing",
+        "source_reference": "our admin copy/src/pages/ReportsPage.jsx or similar",
+        "target_reference": null,
+        "notes": "Full admin module not integrated."
+      },
+      {
+        "id": "admin-guard",
+        "title": "AdminRouteGuard",
+        "module": "admin",
+        "severity": "p2",
+        "status": "missing",
+        "source_reference": "our admin copy/src/components/AdminRouteGuard.jsx",
+        "target_reference": null,
+        "notes": "Admin access control not migrated."
+      }
+    ]
+  },
+  "navigation": [
+    {
+      "id": "nav-login-chat",
+      "title": "Login → Chat redirect",
+      "severity": "p1",
+      "status": "partial",
+      "source_reference": "Auth flow redirect",
+      "target_reference": "routes.jsx, Login.jsx",
+      "notes": "User must manually navigate to /chat after login."
+    }
+  ],
+  "directory_contract": {
+    "missing_dirs": [
+      "src/pages/chat/",
+      "src/pages/settings/",
+      "src/pages/admin/",
+      "src/components/settings/",
+      "src/components/admin/"
+    ],
+    "misplaced_files": [
+      {
+        "path": "src/pages/ChatPlaceholder.jsx",
+        "expected": "src/pages/chat/ChatPlaceholder.jsx or index.jsx"
+      },
+      {
+        "path": "src/pages/Settings.jsx",
+        "expected": "src/pages/settings/Settings.jsx or index.jsx"
+      },
+      {
+        "path": "src/pages/AdminPlaceholder.jsx",
+        "expected": "src/pages/admin/AdminPlaceholder.jsx or index.jsx"
+      },
+      {
+        "path": "src/components/layout/SettingsModal.jsx",
+        "expected": "src/components/settings/SettingsModal.jsx"
+      }
+    ]
+  },
+  "priority": {
+    "p0": [
+      "chat-dir",
+      "settings-dir",
+      "settings-components",
+      "admin-dir",
+      "admin-components"
+    ],
+    "p1": [
+      "auth-otp",
+      "auth-redirect",
+      "settings-layout",
+      "admin-dashboard",
+      "admin-users",
+      "admin-reports",
+      "nav-login-chat"
+    ],
+    "p2": [
+      "admin-guard"
+    ]
+  }
+}

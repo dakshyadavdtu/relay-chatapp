@@ -1,0 +1,5 @@
+# Copy to replacements.txt; remove these comment lines before running filter-repo.
+# Use: git filter-repo --replace-text replacements.txt --force
+literal:dakshyadavdtu_db_user==><REDACTED_USER>
+literal:Yadavv==><REDACTED_PASSWORD>
+literal:relaycluster.0dbxnm0==><REDACTED_HOST>

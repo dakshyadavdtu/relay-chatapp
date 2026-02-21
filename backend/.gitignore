@@ -1,0 +1,23 @@
+.env
+.env.*
+node_modules/
+
+# Local runtime storage (NEVER COMMIT)
+storage/_data/
+storage/_data/**
+storage/_data/users.json
+storage/_data/users.json.bak
+
+storage/_data/uploads/
+storage/_data/*.json
+storage/uploads/
+*.sqlite
+*.db
+__MACOSX/
+*.pem
+*.key
+*.p12
+*.crt
+logs/
+*.log
+.pm2/

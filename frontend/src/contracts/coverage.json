@@ -1,0 +1,283 @@
+{
+  "version": "1.0",
+  "generated": "2025-02-10",
+  "contractSource": "../../../../backend/CONTRACT.json",
+  "summary": {
+    "httpHandled": 9,
+    "httpTotal": 17,
+    "httpPercent": 53,
+    "wsInboundHandled": 13,
+    "wsInboundTotal": 21,
+    "wsOutboundHandled": 12,
+    "wsOutboundTotal": 12,
+    "dmOutboundHandled": 8,
+    "dmOutboundTotal": 8,
+    "errorCodesHandled": 7,
+    "errorCodesTotal": 40,
+    "phase3aDmComplete": true,
+    "phase3cResumeReplayComplete": true,
+    "phase3bDeliveredReadComplete": true,
+    "phase3dTypingPresenceComplete": true,
+    "phase4_5RoomSyncComplete": true,
+    "phase5_1ErrorCodesSurfaced": true,
+    "violations": 3
+  },
+  "http": {
+    "GET /health": {
+      "handled": true,
+      "handlerPath": "src/lib/api.js",
+      "missingHandlerReason": null
+    },
+    "POST /register": {
+      "handled": true,
+      "handlerPath": "src/http/auth.api.js",
+      "missingHandlerReason": null
+    },
+    "POST /login": {
+      "handled": true,
+      "handlerPath": "src/http/auth.api.js",
+      "missingHandlerReason": null
+    },
+    "POST /logout": {
+      "handled": true,
+      "handlerPath": "src/http/auth.api.js",
+      "missingHandlerReason": null
+    },
+    "GET /me": {
+      "handled": true,
+      "handlerPath": "src/http/auth.api.js",
+      "missingHandlerReason": null
+    },
+    "GET /chats": {
+      "handled": true,
+      "handlerPath": "src/features/chat/api/chat.api.js",
+      "missingHandlerReason": null
+    },
+    "GET /chats/:chatId": {
+      "handled": false,
+      "handlerPath": null,
+      "missingHandlerReason": "No frontend call to GET /chats/:chatId"
+    },
+    "POST /chat/send": {
+      "handled": true,
+      "handlerPath": "src/features/chat/api/chat.api.js (sendMessage throws; WS-only via transport/wsClient)",
+      "missingHandlerReason": null,
+      "note": "DM send is WS-only; HTTP sendMessage() throws. Use transport/wsClient for realtime."
+    },
+    "GET /chat": {
+      "handled": true,
+      "handlerPath": "src/features/chat/api/chat.api.js",
+      "missingHandlerReason": null
+    },
+    "GET /chat/:conversationId": {
+      "handled": false,
+      "handlerPath": null,
+      "missingHandlerReason": "Frontend uses GET /chat?chatId=; alternate path /chat/:id not used"
+    },
+    "GET /users/search": {
+      "handled": false,
+      "handlerPath": null,
+      "missingHandlerReason": "No frontend call to user search"
+    },
+    "GET /users/me": {
+      "handled": false,
+      "handlerPath": null,
+      "missingHandlerReason": "auth.api uses /api/me; /users/me is alternate; http/user.api.js has client.request('/users/me') but uses direct fetch (violation)"
+    },
+    "GET /users/:id": {
+      "handled": false,
+      "handlerPath": null,
+      "missingHandlerReason": "No frontend call to fetch user by id"
+    },
+    "GET /sessions/active": {
+      "handled": true,
+      "handlerPath": "src/features/settings/api/sessions.api.js + SessionsPage",
+      "missingHandlerReason": null
+    },
+    "POST /sessions/logout": {
+      "handled": true,
+      "handlerPath": "src/features/settings/api/sessions.api.js + SessionsPage (Log out this session)",
+      "missingHandlerReason": null
+    },
+    "POST /admin/users/:id/role": {
+      "handled": true,
+      "handlerPath": "src/features/admin/api/admin.api.js + AdminUsersPage",
+      "missingHandlerReason": null
+    }
+  },
+  "websocket": {
+    "incoming": {
+      "HELLO": {
+        "handled": true,
+        "handlerPath": "src/transport/wsClient.js",
+        "missingHandlerReason": null
+      },
+      "MESSAGE_SEND": {
+        "handled": true,
+        "handlerPath": "src/transport/wsClient.js (via wsClient.sendMessage)",
+        "missingHandlerReason": null
+      },
+      "MESSAGE_READ": { "handled": true, "handlerPath": "src/transport/wsClient.js sendMessageRead + ChatWindow on DM open", "missingHandlerReason": null },
+      "MESSAGE_READ_CONFIRM": { "handled": true, "handlerPath": "Same as MESSAGE_READ (backend routes both to readAck)", "missingHandlerReason": null },
+      "MESSAGE_DELIVERED_CONFIRM": { "handled": true, "handlerPath": "src/transport/wsClient.js sendMessageDeliveredConfirm on MESSAGE_RECEIVE", "missingHandlerReason": null },
+      "MESSAGE_REPLAY": { "handled": true, "handlerPath": "src/transport/wsClient.js sendMessageReplay (when STATE_SYNC_RESPONSE hasMoreMessages)", "missingHandlerReason": null },
+      "STATE_SYNC": { "handled": true, "handlerPath": "src/transport/wsClient.js sendStateSync (optional)", "missingHandlerReason": null },
+      "RESUME": { "handled": true, "handlerPath": "src/transport/wsClient.js sendResume on HELLO_ACK (ChatAdapterContext)", "missingHandlerReason": null },
+      "PRESENCE_PING": { "handled": true, "handlerPath": "wsClient.sendPresencePing (HELLO_ACK + 60s interval)", "missingHandlerReason": null },
+      "CLIENT_ACK": { "handled": true, "handlerPath": "src/transport/wsClient.js sendClientAck + ChatAdapterContext on MESSAGE_RECEIVE", "missingHandlerReason": null },
+      "PING": { "handled": true, "handlerPath": "src/transport/wsClient.js keepalive every 30s", "missingHandlerReason": null },
+      "TYPING_START": { "handled": true, "handlerPath": "wsClient.sendTypingStart + ChatAdapterContext on DM typing", "missingHandlerReason": null },
+      "TYPING_STOP": { "handled": true, "handlerPath": "wsClient.sendTypingStop + ChatAdapterContext on idle/send/blur", "missingHandlerReason": null },
+      "ROOM_CREATE": { "handled": true, "handlerPath": "src/transport/wsClient.js sendRoomCreate (NewGroupPopup)", "missingHandlerReason": null },
+      "ROOM_JOIN": { "handled": true, "handlerPath": "src/transport/wsClient.js sendRoomJoin (JoinRoomPopup)", "missingHandlerReason": null },
+      "ROOM_LEAVE": { "handled": true, "handlerPath": "src/transport/wsClient.js sendRoomLeave (ChatWindow Leave room)", "missingHandlerReason": null },
+      "ROOM_MESSAGE": { "handled": true, "handlerPath": "src/transport/wsClient.js sendRoomMessage (ChatWindow room send)", "missingHandlerReason": null },
+      "ROOM_INFO": { "handled": true, "handlerPath": "src/transport/wsClient.js sendRoomInfo", "missingHandlerReason": null },
+      "ROOM_LIST": { "handled": true, "handlerPath": "src/transport/wsClient.js sendRoomList (on HELLO_ACK)", "missingHandlerReason": null },
+      "ROOM_MEMBERS": { "handled": true, "handlerPath": "src/transport/wsClient.js sendRoomMembers (on room select)", "missingHandlerReason": null }
+    },
+    "outgoing": {
+      "HELLO_ACK": {
+        "handled": true,
+        "handlerPath": "src/transport/wsClient.js",
+        "missingHandlerReason": null
+      },
+      "MESSAGE_ACK": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx",
+        "missingHandlerReason": null
+      },
+      "MESSAGE_RECEIVE": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx",
+        "missingHandlerReason": null
+      },
+      "MESSAGE_ERROR": {
+        "handled": true,
+        "handlerPath": "src/transport/wsClient.js (emits as ERROR to subscribers)",
+        "missingHandlerReason": null
+      },
+      "ERROR": {
+        "handled": true,
+        "handlerPath": "src/transport/wsClient.js",
+        "missingHandlerReason": null
+      },
+      "RATE_LIMIT_WARNING": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx toast",
+        "missingHandlerReason": null
+      },
+      "MESSAGE_REPLAY_COMPLETE": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (clears isReplaying)",
+        "missingHandlerReason": null
+      },
+      "PONG": {
+        "handled": true,
+        "handlerPath": "src/transport/wsClient.js emit no-op",
+        "missingHandlerReason": null
+      },
+      "RESYNC_START": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (sets isReplaying)",
+        "missingHandlerReason": null
+      },
+      "RESYNC_COMPLETE": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (clears isReplaying)",
+        "missingHandlerReason": null
+      },
+      "STATE_SYNC_RESPONSE": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (triggers MESSAGE_REPLAY if hasMoreMessages)",
+        "missingHandlerReason": null
+      },
+      "MESSAGE_READ": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (sender receives; updates message status to read)",
+        "missingHandlerReason": null
+      },
+      "MESSAGE_STATE_UPDATE": {
+        "handled": true,
+        "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (updates message status delivered/read; room messages matched by messageId)",
+        "missingHandlerReason": null
+      },
+      "TYPING_START": { "handled": true, "handlerPath": "ChatAdapterContext inbound (DM+room typingByChatId)", "missingHandlerReason": null },
+      "TYPING_STOP": { "handled": true, "handlerPath": "ChatAdapterContext inbound (DM+room typingByChatId)", "missingHandlerReason": null },
+      "PRESENCE_UPDATE": { "handled": true, "handlerPath": "ChatAdapterContext inbound (presenceByUserId status+lastSeen)", "missingHandlerReason": null },
+      "PRESENCE_PONG": { "handled": true, "handlerPath": "ChatAdapterContext inbound (presenceByUserId status+lastSeen)", "missingHandlerReason": null },
+      "ROOM_CREATE_RESPONSE": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (roomsById, roomIds, toast on error)", "missingHandlerReason": null },
+      "ROOM_JOIN_RESPONSE": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (roomsById, membersByRoomId, toast on error)", "missingHandlerReason": null },
+      "ROOM_LEAVE_RESPONSE": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (roomIds, membersByRoomId, toast on error)", "missingHandlerReason": null },
+      "ROOM_MESSAGE_RESPONSE": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (reconcile optimistic, toast on error)", "missingHandlerReason": null },
+      "ROOM_INFO_RESPONSE": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx", "missingHandlerReason": null },
+      "ROOM_LIST_RESPONSE": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (roomsById, roomIds)", "missingHandlerReason": null },
+      "ROOM_MEMBERS_RESPONSE": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (membersByRoomId)", "missingHandlerReason": null },
+      "ROOM_MEMBER_JOINED": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (membersByRoomId update)", "missingHandlerReason": null },
+      "ROOM_MEMBER_LEFT": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (membersByRoomId update)", "missingHandlerReason": null },
+      "ROOM_MESSAGE": { "handled": true, "handlerPath": "src/features/chat/adapters/ChatAdapterContext.jsx (messagesByConversation[roomId], dedupe by roomMessageId, updateLastSeenMessageId, replay+merge)", "missingHandlerReason": null }
+    },
+    "roomScope": {
+      "ROOM_CREATE": { "status": "handled", "handler": "backend/websocket/handlers/room.js", "frontendSend": "wsClient.sendRoomCreate (NewGroupPopup)", "frontendReceive": "ChatAdapterContext ROOM_CREATE_RESPONSE" },
+      "ROOM_JOIN": { "status": "handled", "handler": "backend/websocket/handlers/room.js", "frontendSend": "wsClient.sendRoomJoin (JoinRoomPopup)", "frontendReceive": "ChatAdapterContext ROOM_JOIN_RESPONSE" },
+      "ROOM_LEAVE": { "status": "handled", "handler": "backend/websocket/handlers/room.js", "frontendSend": "wsClient.sendRoomLeave (ChatWindow)", "frontendReceive": "ChatAdapterContext ROOM_LEAVE_RESPONSE" },
+      "ROOM_MESSAGE": { "status": "handled", "handler": "backend/websocket/handlers/room.js + group.service.js", "frontendSend": "wsClient.sendRoomMessage (ChatWindow)", "frontendReceive": "ChatAdapterContext ROOM_MESSAGE_RESPONSE + ROOM_MESSAGE (live + replay via RESUME)", "replayViaResume": true },
+      "ROOM_INFO": { "status": "handled", "handler": "backend/websocket/handlers/room.js", "frontendSend": "wsClient.sendRoomInfo", "frontendReceive": "ChatAdapterContext ROOM_INFO_RESPONSE" },
+      "ROOM_LIST": { "status": "handled", "handler": "backend/websocket/handlers/room.js", "frontendSend": "wsClient.sendRoomList on HELLO_ACK", "frontendReceive": "ChatAdapterContext ROOM_LIST_RESPONSE" },
+      "ROOM_MEMBERS": { "status": "handled", "handler": "backend/websocket/handlers/room.js", "frontendSend": "wsClient.sendRoomMembers on room select", "frontendReceive": "ChatAdapterContext ROOM_MEMBERS_RESPONSE" }
+    }
+  },
+  "errorCodes": {
+    "AUTH_REQUIRED": { "handled": true, "handlerPath": "src/http/auth.api.js (UnauthorizedError)", "missingHandlerReason": null },
+    "UNAUTHORIZED": { "handled": true, "handlerPath": "src/http/auth.api.js", "missingHandlerReason": null },
+    "INVALID_PAYLOAD": { "handled": true, "handlerPath": "ChatAdapterContext MESSAGE_ERROR toast", "missingHandlerReason": null },
+    "CONTENT_TOO_LONG": { "handled": true, "handlerPath": "wsContract precheck + ChatWindow + MESSAGE_ERROR toast", "missingHandlerReason": null },
+    "RATE_LIMIT_EXCEEDED": { "handled": true, "handlerPath": "ChatAdapterContext MESSAGE_ERROR + RATE_LIMIT_WARNING toast", "missingHandlerReason": null },
+    "PERSISTENCE_ERROR": { "handled": false, "handlerPath": null, "missingHandlerReason": "Generic error display only" },
+    "INVALID_CREDENTIALS": { "handled": true, "handlerPath": "src/http/auth.api.js (login)", "missingHandlerReason": null },
+    "INVALID_TRANSITION": { "handled": true, "handlerPath": "ChatAdapterContext (retry MESSAGE_READ with backoff, no toast)", "missingHandlerReason": null },
+    "others": { "handled": true, "handlerPath": "src/lib/errorMap.js toUserMessage (generic fallback)", "missingHandlerReason": null }
+  },
+  "errorMapModule": "src/lib/errorMap.js",
+  "backendErrorCodesMapped": ["AUTH_REQUIRED", "UNAUTHORIZED", "INVALID_PAYLOAD", "INVALID_SCHEMA", "INVALID_FIELD_TYPE", "MISSING_FIELD", "MISSING_TYPE", "INVALID_JSON", "INVALID_ACK_TYPE", "INVALID_TRANSITION", "MESSAGE_NOT_FOUND", "PERSISTENCE_ERROR", "REPLAY_ERROR", "SYNC_ERROR", "VERSION_MISMATCH", "RATE_LIMIT_EXCEEDED", "RECIPIENT_BUFFER_FULL", "PAYLOAD_TOO_LARGE", "NOT_AUTHORIZED", "ROOM_NOT_FOUND", "ROOM_FULL", "NOT_A_MEMBER", "MISSING_ROOM_ID", "CREATE_FAILED", "JOIN_FAILED", "LEAVE_FAILED", "MISSING_CONTENT", "CONTENT_TOO_LONG", "BROADCAST_FAILED", "INVALID_LAST_MESSAGE_ID", "CONNECTION_LIMIT"],
+  "adapterBoundaryViolations": [
+    {
+      "file": "src/http/client.js",
+      "type": "direct_fetch",
+      "description": "HARD-DISABLED (all modes). Use apiFetch from lib/http.js."
+    },
+    {
+      "file": "src/http/chat.api.js",
+      "type": "violation",
+      "description": "Uses client.request('/chat') - direct fetch path; path /chat differs from contract /api/chat; not used by ChatAdapterContext (uses features/chat/api/chat.api.js)"
+    },
+    {
+      "file": "src/http/user.api.js",
+      "type": "violation",
+      "description": "Uses client.request('/users/me') - direct fetch; not used by auth flow (auth.api uses /api/me via apiFetch)"
+    },
+    {
+      "file": "src/websocket/connection/core.js",
+      "type": "direct_websocket",
+      "description": "HARD-DISABLED (all modes). /chat uses src/transport/wsClient.js only.",
+      "hardDisabledFiles": ["src/websocket/index.js", "src/websocket/connection/core.js", "src/websocket/subscription.js", "src/websocket/router.js", "src/hooks/useWebSocket.js"]
+    }
+  ],
+  "networkInteractionPaths": {
+    "allowed": [
+      "src/lib/http.js",
+      "src/transport/wsClient.js",
+      "src/features/chat/adapters/ChatAdapterContext.jsx",
+      "src/features/chat/api/chat.api.js",
+      "src/http/auth.api.js",
+      "src/lib/api.js",
+      "src/state/resume.state.js"
+    ],
+    "violations": [
+      "src/http/client.js",
+      "src/http/chat.api.js",
+      "src/http/user.api.js",
+      "src/websocket/connection/core.js"
+    ]
+  }
+}

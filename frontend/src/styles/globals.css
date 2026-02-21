@@ -1,0 +1,192 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+  }
+
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 174 46% 40%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --primary: 174 46% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 174 46% 94%;
+    --accent-foreground: 174 46% 40%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 13%;
+    --card-foreground: 210 40% 98%;
+    --primary: 174 60% 50%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 19% 27%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 19% 27%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 19% 27%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 19% 27%;
+    --input: 217 19% 27%;
+    --ring: 174 60% 50%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-size: var(--base-font-size, 1rem);
+    line-height: var(--base-line-height, 1.5);
+  }
+
+  /* Text size: root classes set --base-font-size (applied by App/ui_prefs to html) */
+  .text-small {
+    --base-font-size: 14px;
+    --base-line-height: 1.4;
+    font-size: 14px;
+  }
+  .text-medium {
+    --base-font-size: 16px;
+    --base-line-height: 1.5;
+    font-size: 16px;
+  }
+  .text-large {
+    --base-font-size: 18px;
+    --base-line-height: 1.5;
+    font-size: 18px;
+  }
+
+  /* Density: CSS vars for gap/padding/radius (small delta between comfortable vs compact) */
+  .density-comfortable {
+    --ui-gap: 0.75rem;
+    --ui-pad: 0.5rem 0.75rem;
+    --ui-pad-block: 0.75rem;
+    --ui-pad-inline: 1rem;
+    --ui-radius-delta: 0;
+    --spacing-scale: 1;
+  }
+  .density-compact {
+    --ui-gap: 0.25rem;
+    --ui-pad: 0.25rem 0.5rem;
+    --ui-pad-block: 0.5rem;
+    --ui-pad-inline: 0.75rem;
+    --ui-radius-delta: -0.125rem;
+    --spacing-scale: 0.85;
+  }
+
+  /* Reduced motion: scoped to root so toggles affect whole app */
+  .reduced-motion {
+    scroll-behavior: auto;
+  }
+  .reduced-motion *,
+  .reduced-motion *::before,
+  .reduced-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full;
+}
+
+/* Chat page: guarantee canvas and bubble palette regardless of global theme (scoped to /chat only). */
+.chat-page-scope {
+  background: #EFEAE2;
+}
+.dark .chat-page-scope {
+  background: #0f172a;
+}
+
+.chat-page-scope .message-bubble-sent {
+  background: #D9FDD3;
+}
+.chat-page-scope .message-bubble-received {
+  background: #ffffff;
+}
+
+/* Chat Background Pattern (Subtle Doodle) */
+.chat-bg-pattern {
+  background-color: hsl(var(--secondary) / 0.3);
+  background-image: radial-gradient(hsl(var(--muted-foreground) / 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Bubble colors: explicit so they win over any other cascade (sent/received only; no layout). */
+.message-bubble-sent {
+  border-bottom-right-radius: 2px;
+  background-color: #D9FDD3;
+}
+.dark .message-bubble-sent {
+  background-color: hsl(var(--primary) / 0.2);
+  border-width: 1px;
+  border-style: solid;
+  border-color: hsl(var(--border));
+}
+.message-bubble-received {
+  border-bottom-left-radius: 2px;
+  background-color: #ffffff;
+}
+.dark .message-bubble-received {
+  background-color: hsl(var(--card));
+}
+
+.hover-elevate {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.hover-elevate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+}
+
+/* Phase 7B: Chat/settings use density vars (root has .density-comfortable or .density-compact) */
+@layer components {
+  .msg-list,
+  [data-msg-list] {
+    gap: var(--ui-gap, 0.75rem);
+  }
+  .msg-bubble,
+  [data-msg-bubble] {
+    padding: var(--ui-pad, 0.5rem 0.75rem);
+  }
+  .sidebar-item,
+  [data-sidebar-item] {
+    padding: var(--ui-pad, 0.5rem 0.75rem);
+  }
+  .chat-header,
+  [data-chat-header] {
+    padding-block: var(--ui-pad-block, 0.75rem);
+    padding-inline: var(--ui-pad-inline, 1rem);
+  }
+  .chat-root-pad {
+    padding: var(--ui-pad-block, 0.75rem) var(--ui-pad-inline, 1rem);
+  }
+  .sidebar-pad {
+    padding: var(--ui-pad-block, 0.75rem);
+  }
+}
