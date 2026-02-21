@@ -1,13 +1,15 @@
 /**
  * Vercel Serverless Function: proxy /api/* to Render backend.
- * Rewrites Set-Cookie to remove Domain so cookies become host-only for the Vercel domain (fixes 401 refresh/me).
+ * Accepts ALL HTTP methods (GET/POST/PUT/PATCH/DELETE/OPTIONS).
+ * Set BACKEND_HTTP_URL in Vercel env (e.g. https://relay-chatapp.onrender.com).
  */
 
-const BACKEND_ORIGIN = 'https://relay-chatapp.onrender.com';
+const BACKEND_ORIGIN = process.env.BACKEND_HTTP_URL || 'https://relay-chatapp.onrender.com';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://relay-chatapp-vercel-frontend.vercel.app';
 
 function getRequestBody(req) {
   return new Promise((resolve, reject) => {
-    if (req.method === 'GET' || req.method === 'HEAD') {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
       resolve(null);
       return;
     }
@@ -31,7 +33,20 @@ function rewriteSetCookieHeader(cookieStr) {
   return s;
 }
 
+function setCorsHeaders(res) {
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+}
+
 export default async function handler(req, res) {
+  if (req.method === 'OPTIONS') {
+    setCorsHeaders(res);
+    res.status(204).end();
+    return;
+  }
+
   const pathSegments = req.query.path;
   const path = Array.isArray(pathSegments) ? pathSegments.join('/') : (pathSegments || '');
   const backendPath = path ? `/api/${path}` : '/api';
@@ -48,7 +63,7 @@ export default async function handler(req, res) {
     const s = params.toString();
     if (s) qs = '?' + s;
   }
-  const backendUrl = `${BACKEND_ORIGIN}${backendPath}${qs}`;
+  const backendUrl = `${BACKEND_ORIGIN.replace(/\/$/, '')}${backendPath}${qs}`;
 
   const headers = {};
   const skipHeaders = ['host', 'connection', 'content-length'];
