@@ -1,3 +1,5 @@
+import { getApiOrigin } from "@/lib/http";
+
 /**
  * True if the string is a data URL (e.g. from FileReader.readAsDataURL).
  * @param {string | null | undefined} url
@@ -9,15 +11,15 @@ export function isDataUrl(url) {
 
 /**
  * Resolve relative URLs (e.g. /uploads/...) to the correct origin.
- * Used by resolveThumbnailUrl and avatarSrc so /uploads/... work when frontend and backend differ.
+ * Uses getApiOrigin() so production always targets backend; dev uses same-origin or proxy.
  * @param {string} url - Non-empty trimmed URL (relative or absolute)
  * @returns {string} Absolute URL or url as-is
  */
 function resolveAssetUrl(url) {
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   if (url.startsWith("/")) {
-    const base = import.meta.env?.VITE_API_BASE_URL ?? import.meta.env?.VITE_API_URL ?? "";
-    const origin = typeof base === "string" && base ? base.replace(/\/$/, "") : (typeof window !== "undefined" ? window.location.origin : "");
+    const base = getApiOrigin();
+    const origin = base || (typeof window !== "undefined" ? window.location.origin : "");
     if (origin) return `${origin}${url}`;
   }
   return url;

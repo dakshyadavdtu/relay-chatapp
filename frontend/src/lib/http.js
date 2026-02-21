@@ -94,6 +94,9 @@ function doRefresh() {
   }
   const origin = getApiOrigin();
   const refreshUrl = origin ? `${origin}${REFRESH_PATH}` : REFRESH_PATH;
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    console.debug('[apiFetch] refresh url=', refreshUrl, 'credentials=include');
+  }
   inFlightRefreshPromise = (async () => {
     try {
       const refreshRes = await fetch(refreshUrl, {
@@ -235,14 +238,19 @@ export class AuthDegradedError extends Error {
 }
 
 /**
- * Backend origin for API requests. In production (e.g. Vercel frontend + Render backend),
- * set VITE_BACKEND_HTTP_URL so all apiFetch and refresh go to Render. In dev or same-origin, unset = use current origin.
- * @returns {string} Origin with no trailing slash, or '' when no origin (relative URLs).
+ * Backend origin for API requests.
+ * - Production with Vercel proxy: leave VITE_BACKEND_HTTP_URL unset → returns '' so requests go to same-origin /api (proxied to Render).
+ * - Production without proxy: set VITE_BACKEND_HTTP_URL to backend origin (e.g. https://relay-chatapp.onrender.com).
+ * - Dev: unset = current origin (Vite proxy); set = explicit backend.
+ * @returns {string} Origin with no trailing slash, or '' for same-origin (relative /api paths).
  */
 export function getApiOrigin() {
   const raw = import.meta.env.VITE_BACKEND_HTTP_URL;
-  if (typeof raw === 'string' && raw.trim()) return raw.trim().replace(/\/$/, '');
-  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin;
+  const trimmed = typeof raw === 'string' ? raw.trim().replace(/\/$/, '') : '';
+  if (trimmed && /localhost|127\.0\.0\.1/i.test(trimmed) && import.meta.env.PROD) {
+    throw new Error('VITE_BACKEND_HTTP_URL must not point to localhost in production.');
+  }
+  if (trimmed) return trimmed;
   return '';
 }
 
@@ -263,7 +271,7 @@ const CHATS_BURST_WINDOW_MS = 2000;
 const CHATS_BURST_THRESHOLD = 2;
 
 export async function apiFetch(path, options = {}) {
-  const { body, __retried, ...rest } = options;
+  const { body, __retried, credentials: _cred, mode: _mode, ...rest } = options;
   const pathNorm = path.startsWith('/') ? path : `/${path}`;
   const url = apiBaseUrl() ? `${apiBaseUrl()}${pathNorm}` : pathNorm;
 
@@ -297,10 +305,14 @@ export async function apiFetch(path, options = {}) {
       headers['x-dev-token-mode'] = '1';
     }
   }
+  const credentials = devTokenMode ? 'omit' : 'include';
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && (pathNorm === ME_PATH || pathNorm.startsWith(ME_PATH + '/') || pathNorm === REFRESH_PATH || pathNorm.startsWith(REFRESH_PATH + '?'))) {
+    console.debug('[apiFetch]', pathNorm === REFRESH_PATH || pathNorm.startsWith(REFRESH_PATH + '?') ? 'refresh' : 'me', 'url=', url, 'credentials=', credentials);
+  }
   const res = await fetch(url, {
     ...rest,
     method,
-    credentials: devTokenMode ? 'omit' : 'include', // Cookie mode: include so session is sent on every /api call
+    credentials,
     headers,
     ...(body != null && typeof body === 'object' && { body: JSON.stringify(body) }),
   });

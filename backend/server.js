@@ -6,6 +6,7 @@ require('./config/cookieConfig');
 const http = require('http');
 const config = require('./config/constants');
 const app = require('./app');
+console.log('trust proxy:', app.get('trust proxy'));
 
 if (process.env.NODE_ENV === 'production') {
   const { getAllowlistSummary } = require('./config/origins');

@@ -3,7 +3,7 @@
  * GET/PATCH /api/me/ui-preferences. Auth via apiFetch (cookies / dev token).
  */
 
-import { apiFetch } from "@/lib/http";
+import { apiFetch, getApiOrigin } from "@/lib/http";
 import { isDevTokenMode, getAccessToken } from "@/features/auth/tokenTransport";
 
 const UI_PREFS_PATH = "/api/me/ui-preferences";
@@ -59,9 +59,9 @@ export function flushServerUiPrefsOnUnload(patch) {
   if (typeof patch.desktopNotifications === "boolean") body.desktopNotifications = patch.desktopNotifications;
   if (Object.keys(body).length === 0) return;
 
-  const origin = window.location?.origin;
-  if (!origin) return;
-  const url = `${origin}${UI_PREFS_PATH}`;
+  const base = getApiOrigin() || window.location?.origin;
+  if (!base) return;
+  const url = `${base}${UI_PREFS_PATH}`;
   const headers = { "Content-Type": "application/json" };
   if (isDevTokenMode()) {
     const token = getAccessToken();
