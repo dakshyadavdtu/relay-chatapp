@@ -37,6 +37,22 @@ function SettingsRoute({ Page }) {
 }
 
 export function Routes() {
+  // #region agent log
+  try {
+    fetch("http://127.0.0.1:7440/ingest/34831ccd-0439-498b-bff5-78886fda482e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8283cd" },
+      body: JSON.stringify({
+        sessionId: "8283cd",
+        location: "routes.jsx:Routes",
+        message: "Routes render start",
+        data: {},
+        timestamp: Date.now(),
+        hypothesisId: "H2",
+      }),
+    }).catch(() => {});
+  } catch (_) {}
+  // #endregion
   return (
     <Switch>
       <Route path="/chat">

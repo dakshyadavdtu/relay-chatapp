@@ -10,6 +10,22 @@ import { applyServerPrefIfNotOverridden } from "@/features/ui_prefs";
  * Phase 4: Hydrates UI preferences from server once authenticated.
  */
 export function AuthLoadingGate({ children }) {
+  // #region agent log
+  try {
+    fetch("http://127.0.0.1:7440/ingest/34831ccd-0439-498b-bff5-78886fda482e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8283cd" },
+      body: JSON.stringify({
+        sessionId: "8283cd",
+        location: "AuthLoadingGate.jsx:AuthLoadingGate",
+        message: "AuthLoadingGate render start",
+        data: {},
+        timestamp: Date.now(),
+        hypothesisId: "H3",
+      }),
+    }).catch(() => {});
+  } catch (_) {}
+  // #endregion
   const { isLoading, isAuthenticated } = useAuth();
   const hydratedRef = useRef(false);
 

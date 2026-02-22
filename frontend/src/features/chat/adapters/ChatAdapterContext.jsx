@@ -131,6 +131,22 @@ function assertCanonicalId(conversationId, context = "") {
 }
 
 export function ChatAdapterProvider({ children }) {
+  // #region agent log
+  try {
+    fetch("http://127.0.0.1:7440/ingest/34831ccd-0439-498b-bff5-78886fda482e", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "8283cd" },
+      body: JSON.stringify({
+        sessionId: "8283cd",
+        location: "ChatAdapterContext.jsx:ChatAdapterProvider",
+        message: "ChatAdapterProvider render start",
+        data: {},
+        timestamp: Date.now(),
+        hypothesisId: "H1",
+      }),
+    }).catch(() => {});
+  } catch (_) {}
+  // #endregion
   const { isAuthenticated, isLoading: authLoading, user: authUser, logout: authLogout } = useAuth();
   const [activeGroupId, setActiveGroupIdState] = useState(null);
   const [activeDmUser, setActiveDmUserState] = useState(null);
@@ -263,6 +279,29 @@ export function ChatAdapterProvider({ children }) {
   useEffect(() => {
     isReplayingRef.current = isReplaying;
   }, [isReplaying]);
+
+  /** Best-effort persist read cursor via POST /api/chats/:chatId/read (DM only). Non-blocking; guard to avoid spam. Declared here so the useEffect below can use it (avoid TDZ). */
+  const persistReadCursor = useCallback(async (conversationId, latestMessageId) => {
+    if (!conversationId || latestMessageId == null) return;
+    const id = typeof latestMessageId === "string" ? latestMessageId : String(latestMessageId);
+    if (!id.trim()) return;
+    const normalizedId = normalizeConversationId(conversationId);
+    if (!normalizedId.startsWith("direct:")) return;
+    const last = lastPersistedReadCursorRef.current[normalizedId];
+    if (last === id) return;
+    try {
+      const result = await markChatRead(normalizedId, id);
+      if (result?.ok) lastPersistedReadCursorRef.current[normalizedId] = id;
+    } catch (e) {
+      if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+        const key = `${normalizedId}:${id}`;
+        if (!failedMarkReadLogRef.current.has(key)) {
+          failedMarkReadLogRef.current.add(key);
+          if (import.meta.env.DEV) console.warn("[markChatRead] persist failed", normalizedId, e?.message);
+        }
+      }
+    }
+  }, []);
 
   /** One-shot: when chat was opened with empty list, persist read cursor once messages load. */
   useEffect(() => {
@@ -1465,29 +1504,6 @@ export function ChatAdapterProvider({ children }) {
       setActiveConversationIdState(null);
     }
   }, [authUser?.id, authUser?.userId]);
-
-  /** Best-effort persist read cursor via POST /api/chats/:chatId/read (DM only). Non-blocking; guard to avoid spam. */
-  const persistReadCursor = useCallback(async (conversationId, latestMessageId) => {
-    if (!conversationId || latestMessageId == null) return;
-    const id = typeof latestMessageId === "string" ? latestMessageId : String(latestMessageId);
-    if (!id.trim()) return;
-    const normalizedId = normalizeConversationId(conversationId);
-    if (!normalizedId.startsWith("direct:")) return;
-    const last = lastPersistedReadCursorRef.current[normalizedId];
-    if (last === id) return;
-    try {
-      const result = await markChatRead(normalizedId, id);
-      if (result?.ok) lastPersistedReadCursorRef.current[normalizedId] = id;
-    } catch (e) {
-      if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
-        const key = `${normalizedId}:${id}`;
-        if (!failedMarkReadLogRef.current.has(key)) {
-          failedMarkReadLogRef.current.add(key);
-          if (import.meta.env.DEV) console.warn("[markChatRead] persist failed", normalizedId, e?.message);
-        }
-      }
-    }
-  }, []);
 
   /** When active conversation is open and a new message arrives: schedule mark-read (WS + HTTP) with debounce 200–500ms so UI stays 0 and backend stays in sync across devices. */
   const MARK_READ_DEBOUNCE_MS = 300;
