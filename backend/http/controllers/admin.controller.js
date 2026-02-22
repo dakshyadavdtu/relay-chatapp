@@ -150,7 +150,6 @@ async function promoteUserToAdmin(req, res) {
   try {
     const connectionManager = require('../../websocket/connection/connectionManager');
     const socketSafety = require('../../websocket/safety/socketSafety');
-    
     const ws = connectionManager.getSocket(targetId);
     if (ws && ws.context) {
       // Option A: Soft update - update context and push capabilities live
