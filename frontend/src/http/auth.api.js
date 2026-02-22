@@ -16,7 +16,8 @@ export async function getCurrentUser() {
     return user;
   } catch (e) {
     if (e instanceof UnauthorizedError || e?.code === "UNAUTHORIZED") return null;
-    throw e;
+    if (e?.code === "NETWORK_NO_RESPONSE" || e?.code === "AUTH_DEGRADED") return null;
+    return null;
   }
 }
 

@@ -98,14 +98,19 @@ function doRefresh() {
   }
   inFlightRefreshPromise = (async () => {
     try {
-      const refreshRes = await fetch(refreshUrl, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-      const ok = refreshRes.ok && refreshRes.status === 200;
-      const status = refreshRes.status;
+      let refreshRes;
+      try {
+        refreshRes = await fetch(refreshUrl, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+      } catch (networkErr) {
+        return { ok: false, status: 0, response: null };
+      }
+      const ok = refreshRes && refreshRes.ok && refreshRes.status === 200;
+      const status = refreshRes ? refreshRes.status : 0;
       if (status === 401 || status === 403) {
         refreshDisabledUntilLogin = true;
       }
@@ -275,6 +280,66 @@ function buildApiUrl(pathNorm) {
   return `${base}${path}`;
 }
 
+const BODY_TRUNCATE = 2000;
+
+/**
+ * Read error response body as text (never .json()). Safe when response is null.
+ * @param {Response | null} response
+ * @returns {Promise<string>} body text, truncated to ~2k
+ */
+async function readErrorBody(response) {
+  if (!response) return '';
+  try {
+    const text = await response.text();
+    return text.length > BODY_TRUNCATE ? text.slice(0, BODY_TRUNCATE) + '...' : text;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Safely get JSON from a response. Never calls .json() on null; reads text then parses.
+ * Use for error responses (401/403) where we want a fallback object.
+ * @param {Response | null} response
+ * @returns {Promise<object>} parsed JSON or {}
+ */
+async function safeParseJsonFromResponse(response) {
+  if (!response) return {};
+  try {
+    const text = await response.text();
+    if (!text || !text.trim()) return {};
+    const parsed = JSON.parse(text);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Parse successful response body: only use when response exists and response.ok.
+ * If content-type is application/json, parse and return; on parse failure throw INVALID_JSON.
+ * Otherwise return raw text or null.
+ * @param {Response} response - must exist and be ok (caller responsibility)
+ * @returns {Promise<object | string | null>}
+ */
+async function parseOkResponseBody(response) {
+  if (!response) throw new Error('NETWORK_NO_RESPONSE');
+  const ct = (response.headers.get('content-type') || '').toLowerCase();
+  if (ct.includes('application/json')) {
+    const text = await response.text();
+    try {
+      return text && text.trim() ? JSON.parse(text) : {};
+    } catch {
+      console.warn('[apiFetch] invalid json in response', text ? text.slice(0, 200) : '(empty)');
+      const err = new Error('INVALID_JSON');
+      err.rawText = text;
+      throw err;
+    }
+  }
+  const text = await response.text();
+  return text || null;
+}
+
 /** DEV only: detect /api/chats call burst (possible regression). Reset every 2s; warn once if >2 in window. */
 let _chatsCallCount = 0;
 let _chatsCallWindowEnd = 0;
@@ -321,13 +386,25 @@ export async function apiFetch(path, options = {}) {
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV && (pathNorm === ME_PATH || pathNorm.startsWith(ME_PATH + '/') || pathNorm === REFRESH_PATH || pathNorm.startsWith(REFRESH_PATH + '?'))) {
     console.debug('[apiFetch]', pathNorm === REFRESH_PATH || pathNorm.startsWith(REFRESH_PATH + '?') ? 'refresh' : 'me', 'url=', url, 'credentials=', credentials);
   }
-  const res = await fetch(url, {
-    ...rest,
-    method,
-    credentials,
-    headers,
-    ...(body != null && typeof body === 'object' && { body: JSON.stringify(body) }),
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      ...rest,
+      method,
+      credentials,
+      headers: { Accept: 'application/json', ...headers },
+      ...(body != null && typeof body === 'object' && { body: JSON.stringify(body) }),
+    });
+  } catch (networkErr) {
+    const err = new Error('NETWORK_NO_RESPONSE');
+    err.code = 'NETWORK_NO_RESPONSE';
+    throw err;
+  }
+  if (!res) {
+    const err = new Error('NETWORK_NO_RESPONSE');
+    err.code = 'NETWORK_NO_RESPONSE';
+    throw err;
+  }
 
   if (res.status === 429) {
     // rate limited
@@ -360,7 +437,7 @@ export async function apiFetch(path, options = {}) {
     if (isCookieMode() && isMe && getAuthState().user?.id) {
       const lastSeen = getLastSeenUserId();
       if (lastSeen != null && String(lastSeen) !== String(getAuthState().user?.id)) {
-        const json = await res.json().catch(() => ({}));
+        const json = await safeParseJsonFromResponse(res);
         handleSessionSwitched();
         const msg = json?.error || 'Another account was used in another tab. Please sign in again.';
         const err = new UnauthorizedError(msg);
@@ -370,7 +447,7 @@ export async function apiFetch(path, options = {}) {
     }
 
     if (isAuthEndpointNoRefresh || alreadyRetried || devTokenMode) {
-      const json = await res.json().catch(() => ({}));
+      const json = await safeParseJsonFromResponse(res);
       const logoutContext =
         typeof window !== 'undefined'
           ? { path: window.location.pathname, lastFailedUrl: url, lastStatus: res.status, host: window.location.host, cookiePresent: undefined }
@@ -398,7 +475,7 @@ export async function apiFetch(path, options = {}) {
 
     const refreshRes = refreshResult.response;
     if (refreshResult.status === 401 || refreshResult.status === 403) {
-      const json = await refreshRes.json().catch(() => ({}));
+      const json = await safeParseJsonFromResponse(refreshRes);
       const logoutContext =
         typeof window !== 'undefined'
           ? { path: window.location.pathname, lastFailedUrl: refreshUrl, lastStatus: refreshResult.status, host: window.location.host, cookiePresent: undefined }
@@ -422,7 +499,7 @@ export async function apiFetch(path, options = {}) {
       status: refreshResult.status,
       correlationId: cid,
     });
-    const json = await res.json().catch(() => ({}));
+    const json = await safeParseJsonFromResponse(res);
     const msg = json?.error || toUserMessage(json?.code) || 'Temporarily unavailable';
     throw new AuthDegradedError(msg, {
       code: 'AUTH_DEGRADED',
@@ -431,28 +508,27 @@ export async function apiFetch(path, options = {}) {
     });
   }
 
-  let json;
-  try {
-    json = await res.json();
-  } catch {
-    if (!res.ok) {
-      const msg = res.statusText || 'Request failed';
-      const err = new Error(msg);
-      err.status = res.status;
-      throw err;
-    }
-    throw new Error('Invalid JSON response');
-  }
-
   if (!res.ok) {
+    const bodyText = await readErrorBody(res);
+    console.warn('[apiFetch] non-ok response', res.status, res.statusText, bodyText ? bodyText.slice(0, 200) : '');
+    let json = {};
+    try {
+      if (bodyText && bodyText.trim()) json = JSON.parse(bodyText);
+    } catch {
+      /* use empty json */
+    }
     const normalized = normalizeBackendError({ code: json?.code, error: json?.error, message: json?.message, details: json?.details });
-    const err = new Error(normalized.message);
+    const err = new Error(normalized.message || res.statusText || 'Request failed');
     err.code = normalized.code;
     err.status = res.status;
     throw err;
   }
 
-  return json;
+  try {
+    return await parseOkResponseBody(res);
+  } catch (parseErr) {
+    throw parseErr;
+  }
 }
 
 if (typeof wsClient !== 'undefined' && wsClient.subscribe) {
