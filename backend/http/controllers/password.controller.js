@@ -26,7 +26,7 @@ async function forgot(req, res) {
     return sendError(res, 400, 'Email or username is required', 'INVALID_REQUEST');
   }
 
-  const user = userService.findUserByEmailOrUsername(emailOrUsername);
+  const user = await userService.findUserByEmailOrUsername(emailOrUsername);
   const targetEmail = user && user.email ? user.email.trim().toLowerCase() : null;
 
   if (targetEmail) {
@@ -83,7 +83,7 @@ async function reset(req, res) {
     return sendError(res, 400, 'Invalid or expired OTP', 'INVALID_OTP');
   }
 
-  const user = userService.findUserByEmailOrUsername(emailNorm);
+  const user = await userService.findUserByEmailOrUsername(emailNorm);
   if (!user || !user.id) {
     return sendError(res, 400, 'Invalid or expired OTP', 'INVALID_OTP');
   }
