@@ -1,21 +1,13 @@
 /**
- * Base URL for API requests. Use VITE_BACKEND_HTTP_URL for consistency with lib/http.js.
- * In dev with proxy: leave unset so same-origin and cookies attach.
- * In production: VITE_BACKEND_HTTP_URL is required (frontend calls Render directly).
+ * Canonical API base (single source). Re-exported from lib/http so all callers (ws, upload, etc.) use the same value.
+ * PROD: VITE_BACKEND_HTTP_URL required (validated at startup in main.jsx). DEV: VITE_BACKEND_HTTP_URL or ''.
  */
-export function getApiBase() {
-  const base =
-    import.meta.env.VITE_BACKEND_HTTP_URL ??
-    import.meta.env.VITE_API_BASE_URL ??
-    import.meta.env.VITE_API_URL;
-  const trimmed = typeof base === "string" ? base.replace(/\/$/, "") : "";
-  if (typeof window !== "undefined") return trimmed;
-  return trimmed;
-}
+import { getApiBase as getApiBaseFromHttp } from "@/lib/http";
+export const getApiBase = getApiBaseFromHttp;
 
 /**
- * WebSocket URL. In browser always same-origin (window.location) so cookie auth works.
- * Do NOT use VITE_WS_URL pointing at backend (e.g. ws://localhost:8000) in dev.
+ * WebSocket URL. Use config/ws.js getWsUrl() in app code (handles PROD VITE_BACKEND_WS_URL, dev same-origin).
+ * This legacy getter is for non-browser or tests only; do NOT use VITE_WS_URL pointing at backend in dev.
  */
 export function getWsUrl() {
   if (typeof window !== "undefined") {
@@ -24,7 +16,7 @@ export function getWsUrl() {
   }
   const wsEnv = import.meta.env.VITE_WS_URL;
   if (typeof wsEnv === "string" && wsEnv) return wsEnv.replace(/\/$/, "");
-  const apiBase = getApiBase();
+  const apiBase = getApiBaseFromHttp();
   if (apiBase) {
     const origin = new URL(apiBase).origin;
     const protocol = origin.startsWith("https") ? "wss:" : "ws:";

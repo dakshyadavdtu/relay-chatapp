@@ -22,7 +22,7 @@ export async function getCurrentUser() {
 
 export async function loginUser(data) {
   const headers = isDevTokenMode() ? { "x-dev-token-mode": "1" } : undefined;
-  const json = await apiFetch("/api/login", {
+  const json = await apiFetch("/api/auth/login", {
     method: "POST",
     body: data,
     ...(headers && { headers: { ...headers } }),

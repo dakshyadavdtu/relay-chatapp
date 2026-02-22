@@ -9,6 +9,28 @@ import { pingHealth } from "./lib/api";
 import { bootstrap } from "@/features/ui_prefs";
 import { primeAudio } from "@/utils/soundEffects";
 
+/** Production: require backend URLs; no localhost fallback (Vercel -> Render). */
+if (typeof import.meta !== "undefined" && import.meta.env.PROD) {
+  const httpUrl = import.meta.env.VITE_BACKEND_HTTP_URL;
+  const wsUrl = import.meta.env.VITE_BACKEND_WS_URL;
+  if (!httpUrl || typeof httpUrl !== "string" || !httpUrl.trim()) {
+    throw new Error(
+      "VITE_BACKEND_HTTP_URL is required in production. Set it in your build (e.g. Vercel env) to your backend URL (e.g. https://relay-chatapp.onrender.com)."
+    );
+  }
+  if (!wsUrl || typeof wsUrl !== "string" || !wsUrl.trim()) {
+    throw new Error(
+      "VITE_BACKEND_WS_URL is required in production. Set it to your backend WebSocket URL (e.g. wss://relay-chatapp.onrender.com/ws)."
+    );
+  }
+  if (/localhost|127\.0\.0\.1/i.test(httpUrl.trim())) {
+    throw new Error("VITE_BACKEND_HTTP_URL must not point to localhost in production.");
+  }
+  if (/localhost|127\.0\.0\.1/i.test(wsUrl.trim())) {
+    throw new Error("VITE_BACKEND_WS_URL must not point to localhost in production.");
+  }
+}
+
 /** DEV only: enforce single host so host-only cookies are not split (localhost vs 127.0.0.1). */
 const ALLOWED_DEV_HOST = "localhost";
 const isDevWrongHost =

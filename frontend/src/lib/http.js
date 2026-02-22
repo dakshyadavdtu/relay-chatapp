@@ -130,6 +130,7 @@ async function ensureRefreshBeforeRequest(pathNorm, options) {
   if (refreshDisabledUntilLogin) return;
   if (
     pathNorm === '/api/login' ||
+    pathNorm === '/api/auth/login' ||
     pathNorm === '/api/register' ||
     pathNorm.startsWith('/api/forgot') ||
     pathNorm.startsWith('/api/reset')
@@ -236,15 +237,17 @@ export class AuthDegradedError extends Error {
 }
 
 /**
- * API base for HTTP requests.
- * - PROD: VITE_BACKEND_HTTP_URL (required). Frontend calls Render directly; no Vercel proxy.
- * - DEV: VITE_BACKEND_HTTP_URL or localhost:8000 (Vite proxy).
+ * Canonical API base (no trailing slashes). PROD: VITE_BACKEND_HTTP_URL only (required at startup).
+ * DEV: VITE_BACKEND_HTTP_URL or ''; buildApiUrl uses '' -> relative path or localhost:8000 for proxy.
  */
-export const API_BASE = import.meta.env.PROD
-  ? (typeof import.meta.env.VITE_BACKEND_HTTP_URL === 'string'
-      ? import.meta.env.VITE_BACKEND_HTTP_URL.trim().replace(/\/$/, '')
-      : '')
-  : (import.meta.env.VITE_BACKEND_HTTP_URL || 'http://localhost:8000');
+export function getApiBase() {
+  const raw = import.meta.env.VITE_BACKEND_HTTP_URL ?? '';
+  return (typeof raw === 'string' ? raw.trim() : '').replace(/\/+$/, '');
+}
+
+/** Used by buildApiUrl. PROD: getApiBase() only. DEV: getApiBase() or localhost:8000 so proxy works. */
+export const API_BASE =
+  import.meta.env.PROD ? getApiBase() : (getApiBase() || 'http://localhost:8000');
 
 /**
  * Backend origin for API requests (for building full URLs in direct fetch calls).
@@ -347,6 +350,7 @@ export async function apiFetch(path, options = {}) {
     const isMe = pathNorm === ME_PATH;
     const isAuthEndpointNoRefresh =
       pathNorm === '/api/login' ||
+      pathNorm === '/api/auth/login' ||
       pathNorm === '/api/register' ||
       pathNorm.startsWith('/api/forgot') ||
       pathNorm.startsWith('/api/reset') ||
