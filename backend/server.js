@@ -56,7 +56,18 @@ async function start() {
   const wsPath = process.env.WS_PATH || '/ws';
   const wsCore = attachWebSocketServer(server, { path: wsPath });
 
-  // 4. 🔥 LISTEN FIRST 🔥 (Satisfies Render Port Scanner)
+  // 4. Ensure root admin before accepting traffic (idempotent); fail fast in production
+  const { ensureRootAdmin } = require('./auth/ensureRootAdmin');
+  try {
+    await ensureRootAdmin();
+  } catch (err) {
+    console.error('ensureRootAdmin failed:', err.message);
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    }
+  }
+
+  // 5. 🔥 LISTEN FIRST 🔥 (Satisfies Render Port Scanner)
   server.listen(port, '0.0.0.0', () => {
     console.log(`Backend listening on 0.0.0.0:${port}`);
     if (process.env.NODE_ENV !== 'production') {
@@ -64,12 +75,11 @@ async function start() {
     }
   });
 
-  // 5. SLOW INITIALIZATION WITH RETRY
+  // 6. SLOW INITIALIZATION WITH RETRY
   try {
     console.log('Starting background initialization (DB, Redis)...');
     
     await roomManager.loadFromStore();
-    await userService.ensureRootAdmin();
     await userService.ensureDevAdminUser();
 
     // Start Redis with the robust retry loop
@@ -85,7 +95,7 @@ async function start() {
     console.error('Fatal error during background initialization:', error);
   }
 
-  // 6. Graceful Shutdown Handlers
+  // 7. Graceful Shutdown Handlers
   function handleShutdown(signal) {
     (async () => {
       let exitCode = 0;

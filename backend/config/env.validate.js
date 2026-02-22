@@ -99,6 +99,35 @@ function validateEnv() {
         process.exit(1);
       }
     }
+
+    // --- ROOT_ADMIN_EMAIL: required, non-empty, valid email format ---
+    const rootEmail = (v.ROOT_ADMIN_EMAIL || '').trim();
+    if (!rootEmail) {
+      console.error('Missing required environment variable for production: ROOT_ADMIN_EMAIL');
+      process.exit(1);
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(rootEmail)) {
+      console.error('ROOT_ADMIN_EMAIL must be a valid email address.');
+      process.exit(1);
+    }
+
+    // --- ROOT_ADMIN_PASSWORD: required, non-empty, minimum length 10 (never log value) ---
+    const rootPassword = v.ROOT_ADMIN_PASSWORD;
+    if (rootPassword === undefined || typeof rootPassword !== 'string') {
+      console.error('Missing required environment variable for production: ROOT_ADMIN_PASSWORD');
+      process.exit(1);
+    }
+    const passwordTrimmed = rootPassword.trim();
+    if (passwordTrimmed.length === 0) {
+      console.error('ROOT_ADMIN_PASSWORD must be non-empty.');
+      process.exit(1);
+    }
+    if (passwordTrimmed.length < 10) {
+      console.error('ROOT_ADMIN_PASSWORD must be at least 10 characters.');
+      process.exit(1);
+    }
+    // ROOT_ADMIN_USERNAME is optional; no validation.
   }
 
   // --- Category A: critical ---

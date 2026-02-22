@@ -101,11 +101,13 @@ const PAYLOAD = {
 /**
  * Root admin identity. Single source of truth; do not check email/username elsewhere.
  * Only this identity is treated as root; protected from ban, revoke, role change, etc.
- * ROOT_ADMIN_EMAIL: set via env (e.g. dakshyadavproject@gmail.com); empty = no root.
- * ROOT_ADMIN_USERNAME: default daksh_root; used for bootstrap and isRootUser().
+ * In production ROOT_ADMIN_EMAIL and ROOT_ADMIN_PASSWORD are required (validated in env.validate.js).
+ * ROOT_ADMIN_USERNAME optional; default daksh_root when not set.
  */
 const ROOT_ADMIN_EMAIL = (process.env.ROOT_ADMIN_EMAIL || '').trim().toLowerCase();
 const ROOT_ADMIN_USERNAME = (process.env.ROOT_ADMIN_USERNAME || 'daksh_root').trim().toLowerCase();
+/** Root admin password (required in production; never log or expose). */
+const ROOT_ADMIN_PASSWORD = (process.env.ROOT_ADMIN_PASSWORD || '').trim();
 
 /**
  * Backpressure configuration
@@ -198,6 +200,7 @@ module.exports = {
   PORT,
   ROOT_ADMIN_EMAIL,
   ROOT_ADMIN_USERNAME,
+  ROOT_ADMIN_PASSWORD,
   JWT_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
   ACCESS_TOKEN_EXPIRES_IN_SECONDS,

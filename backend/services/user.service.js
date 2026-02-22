@@ -9,7 +9,6 @@
 const bcrypt = require('bcrypt');
 const userStore = require('../storage/user.store');
 const { ROLES } = require('../auth/roles');
-const config = require('../config/constants');
 
 const SALT_ROUNDS = 10;
 const MIN_PASSWORD_LENGTH = 6;
@@ -222,24 +221,12 @@ async function ensureDevAdminUser() {
 }
 
 /**
- * Root admin bootstrap: ensure user with ROOT_ADMIN_EMAIL exists in DB with role ADMIN.
- * Idempotent: findOneAndUpdate with upsert; then ensure role ADMIN and passwordHash.
- * Requires ROOT_ADMIN_EMAIL and ROOT_ADMIN_PASSWORD in env when ROOT_ADMIN_EMAIL is set.
+ * Root admin bootstrap: delegates to auth/ensureRootAdmin.js (single implementation).
+ * Kept for backward compatibility (e.g. scripts that call userService.ensureRootAdmin()).
  */
 async function ensureRootAdmin() {
-  const email = (config.ROOT_ADMIN_EMAIL || '').trim().toLowerCase();
-  if (!email) return;
-
-  const password = (process.env.ROOT_ADMIN_PASSWORD || '').trim();
-  if (!password) {
-    console.warn('ROOT_ADMIN_EMAIL is set but ROOT_ADMIN_PASSWORD is missing; skipping root admin bootstrap.');
-    return;
-  }
-
-  const rootUsername = (config.ROOT_ADMIN_USERNAME || '').trim() || undefined;
-  const passwordHash = await hashPassword(password);
-  const user = await userStore.ensureRootAdminUser(email, passwordHash, rootUsername);
-  console.log('Root admin ensured:', user.id, user.username, user.role);
+  const { ensureRootAdmin: doEnsure } = require('../auth/ensureRootAdmin');
+  await doEnsure();
 }
 
 module.exports = {

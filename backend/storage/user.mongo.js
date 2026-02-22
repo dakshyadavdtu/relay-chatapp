@@ -8,6 +8,7 @@
 const crypto = require('crypto');
 const mongoClient = require('./mongo.client');
 const { ROLES } = require('../auth/roles');
+const config = require('../config/constants');
 
 const COLLECTION = 'users';
 let indexesEnsured = false;
@@ -355,9 +356,36 @@ async function patchUiPreferences(userId, patch) {
   return r.matchedCount > 0;
 }
 
+/**
+ * Clear all users from the collection except the root admin (so wipe/reset never locks us out).
+ * Root is identified by ROOT_ADMIN_EMAIL or ROOT_ADMIN_USERNAME (same as isRootUser).
+ * If neither is set, deletes all (e.g. dev with no root env).
+ * Preserved root user is guaranteed role ADMIN (promoted if it was USER).
+ */
 async function clear() {
   const db = await getDb();
-  await db.collection(COLLECTION).deleteMany({});
+  const col = db.collection(COLLECTION);
+  const rootEmail = (config.ROOT_ADMIN_EMAIL || '').trim().toLowerCase();
+  const rootUsername = (config.ROOT_ADMIN_USERNAME || '').trim().toLowerCase();
+
+  let filter = {};
+  if (rootEmail || rootUsername) {
+    const nor = [];
+    if (rootEmail) nor.push({ emailLower: rootEmail });
+    if (rootUsername) nor.push({ usernameLower: rootUsername });
+    filter = { $nor: nor };
+  }
+  await col.deleteMany(filter);
+
+  if (rootEmail || rootUsername) {
+    const or = [];
+    if (rootEmail) or.push({ emailLower: rootEmail });
+    if (rootUsername) or.push({ usernameLower: rootUsername });
+    await col.updateMany(
+      { $or: or },
+      { $set: { role: ROLES.ADMIN, updatedAt: Date.now() } }
+    );
+  }
 }
 
 /** Operators that modify field paths (used for conflict detection). */
