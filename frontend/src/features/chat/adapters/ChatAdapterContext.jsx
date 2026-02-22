@@ -240,6 +240,8 @@ export function ChatAdapterProvider({ children }) {
   const roomUnreadPendingRef = useRef(null);
   /** Per-conversation last persisted read cursor (DM only); skip POST if same cursor. */
   const lastPersistedReadCursorRef = useRef({});
+  /** When opening a DM with no messages yet, hold chat id so we persist cursor once history loads. */
+  const pendingReadAfterHydrationRef = useRef(null);
   /** DEV: log markChatRead failure once per (conversationId, messageId) to avoid spam. */
   const failedMarkReadLogRef = useRef(new Set());
   /** Debounced mark-read when new message arrives in active conversation (DM). Timer + pending conversationId/messageId. */
@@ -261,6 +263,24 @@ export function ChatAdapterProvider({ children }) {
   useEffect(() => {
     isReplayingRef.current = isReplaying;
   }, [isReplaying]);
+
+  /** One-shot: when chat was opened with empty list, persist read cursor once messages load. */
+  useEffect(() => {
+    const activeId = activeConversationId;
+    if (!activeId || !activeId.startsWith("direct:")) return;
+    if (pendingReadAfterHydrationRef.current !== activeId) return;
+    const list = messagesByConversation[activeId] || [];
+    if (list.length === 0) return;
+    const me = getAuthState().user?.id ?? getAuthState().user?.userId;
+    if (!me) return;
+    const fromOther = list.filter((m) => m.senderId && String(m.senderId) !== String(me));
+    const latestMessage = fromOther.length > 0 ? fromOther[fromOther.length - 1] : list[list.length - 1];
+    const latestMessageId = latestMessage?.messageId || latestMessage?.id;
+    if (!latestMessageId) return;
+    pendingReadAfterHydrationRef.current = null;
+    void persistReadCursor(activeId, latestMessageId);
+    if (wsClient.isReady()) wsClient.sendMessageRead(latestMessageId);
+  }, [activeConversationId, messagesByConversation, persistReadCursor]);
 
   /** Phase 3: Set directory hydrating when auth transitions to authenticated (so UI shows loading until ROOMS_SNAPSHOT/ROOM_LIST_RESPONSE). */
   useEffect(() => {
@@ -1570,6 +1590,7 @@ export function ChatAdapterProvider({ children }) {
         // Invariant: active conversation unread must be 0 when opening (no messages yet).
         if (normalizedId.startsWith("direct:")) {
           setUnreadCounts((prev) => ({ ...prev, [normalizedId]: 0 }));
+          pendingReadAfterHydrationRef.current = normalizedId;
         } else if (normalizedId.startsWith("room:")) {
           setRoomUnreadCounts((prev) => ({ ...prev, [normalizedId]: 0 }));
         }
@@ -1802,11 +1823,15 @@ export function ChatAdapterProvider({ children }) {
           if (c.chatId != null && typeof c.unreadCount === "number") {
             const normalizedId = normalizeConversationId(c.chatId);
             next[normalizedId] = Math.max(0, c.unreadCount);
+            // Don't re-inflate: we already persisted read for this chat this session.
+            if (lastPersistedReadCursorRef.current[normalizedId]) next[normalizedId] = 0;
           }
         });
         // Invariant: active conversation unread must stay 0 (e.g. after refresh do not overwrite with API value). Guard: unread never negative.
         const activeId = activeConversationIdRef.current;
         if (activeId) next[activeId] = 0;
+        const pendingId = pendingReadAfterHydrationRef.current;
+        if (pendingId) next[pendingId] = 0;
         return next;
       });
       setLastMessagePreviews((prev) => {
@@ -2387,6 +2412,7 @@ export function ChatAdapterProvider({ children }) {
   const markAsReadForConversationRef = useRef({
     timer: null,
     lastSent: null,
+    lastPersistedByChat: {},
     readRetry: { messageId: null, failures: 0, timer: null },
   });
 
@@ -2434,12 +2460,26 @@ export function ChatAdapterProvider({ children }) {
         return msgId && String(msgId) === String(latestMessageId);
       });
       if (!msg) return;
-      if (!isDeliveredOrRead(msg.status)) return;
-      // Never send read for own message; only when we are the recipient (DM).
+      // Never send read for own message; only when we are the recipient (DM). Applies to both WS and POST /read.
       if (String(msg.senderId) === String(me.id)) return;
       if (msg.recipientId != null && String(msg.recipientId) !== String(me.id)) return;
       if (msg.roomId != null || msg.roomMessageId != null) return;
-      
+
+      // Cursor persistence: always call when we have latestMessageId (user has seen chat). Not gated by msg.status.
+      const lastPersisted = markAsReadForConversationRef.current.lastPersistedByChat?.[normalizedId];
+      if (lastPersisted !== latestMessageId) {
+        markAsReadForConversationRef.current.lastPersistedByChat = {
+          ...markAsReadForConversationRef.current.lastPersistedByChat,
+          [normalizedId]: latestMessageId,
+        };
+        void persistReadCursor(normalizedId, latestMessageId);
+      }
+      // WS MESSAGE_READ: only when message is delivered/read (protocol gating unchanged).
+      if (isDeliveredOrRead(msg.status)) {
+        markAsReadForConversationRef.current.lastSent = latestMessageId;
+        wsClient.sendMessageRead(latestMessageId);
+      }
+
       // PHASE 3: Set lastReadMessageId optimistically
       setLastReadMessageIdByConversation((prev) => {
         const current = prev[normalizedId];
@@ -2460,10 +2500,6 @@ export function ChatAdapterProvider({ children }) {
         }
         return { ...prev, [normalizedId]: latestMessageId };
       });
-      
-      markAsReadForConversationRef.current.lastSent = latestMessageId;
-      wsClient.sendMessageRead(latestMessageId);
-      void persistReadCursor(normalizedId, latestMessageId);
 
       // PROMPT 2 PART A: Clear unread count when marking as read
       // For DMs: clear unreadCounts

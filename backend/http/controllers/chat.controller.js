@@ -465,7 +465,7 @@ async function markChatRead(req, res) {
   const userId = req.user?.userId;
   if (!userId) return sendError(res, 401, 'Not authenticated', 'UNAUTHORIZED');
 
-  const { chatId } = req.params;
+  const chatId = (req.params.chatId || '').trim();
   const body = req.body || {};
   const lastReadMessageId = (body.lastReadMessageId || body.messageId || '').trim();
   if (!lastReadMessageId) {
