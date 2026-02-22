@@ -155,6 +155,27 @@ async function handleIncoming(ws, data, sendResponse, context = {}) {
     };
   }
 
+  if (type === MessageType.MESSAGE_SEND && (payload.roomId != null || payload.groupId != null || payload.roomChatId != null)) {
+    return {
+      policy: 'FAIL',
+      response: {
+        type: 'MESSAGE_ERROR',
+        error: 'DM must not include roomId or groupId',
+        code: ErrorCodes.INVALID_PAYLOAD,
+      },
+    };
+  }
+  if (type === MessageType.ROOM_MESSAGE && (payload.recipientId != null || payload.toUserId != null || payload.peerUserId != null)) {
+    return {
+      policy: 'FAIL',
+      response: {
+        type: 'MESSAGE_ERROR',
+        error: 'Room message must not include recipientId or toUserId',
+        code: ErrorCodes.INVALID_PAYLOAD,
+      },
+    };
+  }
+
   if (result.warning) {
     sendResponse(ws, {
       type: 'RATE_LIMIT_WARNING',

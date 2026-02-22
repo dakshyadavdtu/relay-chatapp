@@ -139,6 +139,13 @@ function createOnChatMessage(deps) {
         });
         return;
       }
+      if (parsedEvent.roomId != null || parsedEvent.groupId != null || parsedEvent.roomChatId != null) {
+        log.warn('RedisBusHandler', 'chat_message_room_shaped_ignored', {
+          messageId: parsedEvent?.messageId ?? null,
+          originInstanceId: parsedEvent?.originInstanceId ?? null,
+        });
+        return;
+      }
       const { originInstanceId, messageId, recipientId, receivePayload } = parsedEvent;
 
       if (originInstanceId === instanceId) {

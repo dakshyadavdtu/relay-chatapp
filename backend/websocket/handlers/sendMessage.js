@@ -51,6 +51,9 @@ async function handleMessageSend(ws, payload, context = {}) {
   }
 
   const { recipientId, content, clientMessageId } = payload || {};
+  if (payload.roomId != null || payload.groupId != null || payload.roomChatId != null) {
+    return toNack(ErrorCodes.INVALID_PAYLOAD, 'DM must not include roomId/groupId', clientMessageId);
+  }
   if (!recipientId) {
     return toNack(ErrorCodes.INVALID_PAYLOAD, 'recipientId is required', clientMessageId);
   }

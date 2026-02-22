@@ -292,7 +292,9 @@ async function subscribe(channel, handler) {
     };
     subscribedChannels.set(channel, channelData);
   }
-  
+
+  if (channelData.subscribed) return;
+
   // Add handler
   channelData.handlers.add(handler);
   

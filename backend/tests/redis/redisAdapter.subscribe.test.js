@@ -101,4 +101,26 @@ describe('redisAdapter subscribe (v4 callback)', () => {
     await redisAdapter.close().catch(() => {});
     redisAdapter.resetForTest();
   });
+
+  test('second subscribe to same channel does not call sub.subscribe again (idempotent per channel)', async () => {
+    redisAdapter.resetForTest();
+    const { sub: fakeSub, subscribeCalls } = createFakeSubClient();
+    let callCount = 0;
+    const createClientOverride = () => {
+      callCount++;
+      return callCount === 1 ? createFakePubClient() : fakeSub;
+    };
+
+    await redisAdapter.initialize({ createClientOverride });
+    const fn1 = () => {};
+    const fn2 = () => {};
+    await redisAdapter.subscribe('chat.message', fn1);
+    await redisAdapter.subscribe('chat.message', fn2);
+
+    assert.strictEqual(subscribeCalls.length, 1, 'sub.subscribe should be called only once per channel');
+    assert.strictEqual(subscribeCalls[0].channel, 'chat.message');
+
+    await redisAdapter.close().catch(() => {});
+    redisAdapter.resetForTest();
+  });
 });

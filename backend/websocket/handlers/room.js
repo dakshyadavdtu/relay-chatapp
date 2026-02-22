@@ -188,6 +188,9 @@ async function handleRoomMessage(ws, payload, context = {}) {
     return { type: 'ROOM_MESSAGE_RESPONSE', success: false, error: 'Not authenticated', code: ErrorCodes.UNAUTHORIZED };
   }
   const { roomId, content, clientMessageId, messageType } = payload;
+  if (payload.recipientId != null || payload.toUserId != null || payload.peerUserId != null) {
+    return { type: 'ROOM_MESSAGE_RESPONSE', success: false, error: 'Room message must not include recipientId/toUserId', code: ErrorCodes.INVALID_PAYLOAD, roomId };
+  }
   if (!roomId) {
     return { type: 'ROOM_MESSAGE_RESPONSE', success: false, error: 'Room ID is required', code: ErrorCodes.MISSING_ROOM_ID };
   }
