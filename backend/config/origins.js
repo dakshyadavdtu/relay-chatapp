@@ -155,7 +155,14 @@ function parse() {
   for (const p of patterns) {
     if (!out.includes(p)) out.push(p);
   }
-  return out.length ? out : DEV_DEFAULTS;
+  const result = out.length ? out : DEV_DEFAULTS;
+  // Production: ensure deployed Vercel frontend is always allowed (single source of truth)
+  const VERCEL_FRONTEND_ORIGIN = 'https://relay-chatapp-vercel-frontend.vercel.app';
+  if (isProduction) {
+    const normalizedVercel = normalizeOrigin(VERCEL_FRONTEND_ORIGIN);
+    if (!result.includes(normalizedVercel)) result.push(normalizedVercel);
+  }
+  return result;
 }
 
 /** Dedupe and return array (order preserved, first occurrence wins). */

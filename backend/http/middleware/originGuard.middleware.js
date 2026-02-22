@@ -1,34 +1,43 @@
 'use strict';
 
 /**
- * Origin/Referer guard for CSRF protection.
- * Blocks cross-site state-changing requests (POST, PUT, PATCH, DELETE)
- * when Origin/Referer does not match allowed origins.
+ * Origin/Referer guard for CSRF protection (strict allowlisting only).
+ * No token-style CSRF: we do NOT require x-csrf-token or a csrf cookie.
  *
- * Uses unified config (config/origins.js): CORS_ORIGINS or CORS_ORIGIN, or dev defaults.
- * Dev: any localhost/127.0.0.1 with any port allowed; missing Origin+Referer allowed (tooling).
+ * Logic:
+ *   - If request is same-site (no Origin in dev, or Origin allowed): next()
+ *   - Else: 403 JSON { success: false, error: 'Cross-site request blocked', code: 'CSRF_BLOCKED' }
+ *
+ * Blocks cross-site state-changing requests (POST, PUT, PATCH, DELETE)
+ * when Origin/Referer does not match allowed origins (config/origins.js).
+ * Dev: any localhost/127.0.0.1 allowed; missing Origin+Referer allowed (tooling).
  * Prod: block missing Origin+Referer and block non-allowed origins.
  *
  * WS upgrade is unaffected (handled before /api routes).
  */
 
-const { isAllowedOrigin } = require('../../config/origins');
+const { isAllowedOrigin, normalizeOrigin } = require('../../config/origins');
 
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const isProduction = process.env.NODE_ENV === 'production';
 
+/** Single function that computes request origin: Origin header or Referer origin, normalized (no trailing slash, origin-only). */
 function getRequestOrigin(req) {
-  const origin = req.get('Origin');
-  if (origin) return origin;
-  const referer = req.get('Referer');
-  if (referer) {
+  const raw = req.get('Origin') || (() => {
+    const referer = req.get('Referer');
+    if (!referer) return null;
     try {
       return new URL(referer).origin;
     } catch {
       return null;
     }
+  })();
+  if (!raw) return null;
+  try {
+    return normalizeOrigin(raw);
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function originGuard(req, res, next) {

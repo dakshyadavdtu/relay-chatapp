@@ -20,6 +20,8 @@ router.post('/register', authLimiter, authController.register);
 
 // POST /login - Create session and set cookies
 router.post('/login', authLimiter, authController.login);
+// POST /auth/login - Alias so POST /api/auth/login returns 401/200/403 (not 404)
+router.post('/auth/login', authLimiter, authController.login);
 
 // POST /auth/refresh - Rotate refresh token, set new access + refresh cookies (no requireAuth)
 router.post('/auth/refresh', authLimiter, authController.refresh);

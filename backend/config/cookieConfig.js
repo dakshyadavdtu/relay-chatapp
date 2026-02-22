@@ -3,6 +3,8 @@
 /**
  * Shared auth cookie options for local dev and production.
  * Host-only cookies (no Domain attribute) for reliable cross-site (e.g. Vercel→Render).
+ * Production: SameSite=None; Secure so cookies work cross-site (frontend on Vercel, backend on Render).
+ * CSRF is enforced by Origin/Referer allowlisting only (no x-csrf-token or csrf cookie).
  * Refresh cookie Path MUST be "/" so the browser sends it on /api/auth/refresh and /api/me.
  * Env overrides: COOKIE_SECURE, COOKIE_SAME_SITE, COOKIE_PATH, REFRESH_COOKIE_PATH. COOKIE_DOMAIN is not used for Set-Cookie (host-only).
  */
