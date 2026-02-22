@@ -93,8 +93,11 @@ function filterMessagesByChatId(messages, chatId, userId) {
       return [];
     }
 
-    // Filter: messages where (senderId, recipientId) matches chat participants
+    // Filter: messages where (senderId, recipientId) matches chat participants.
+    // Exclude room messages: getMessagesForRecipient returns all messages for recipient (including
+    // room per-recipient rows), so room messages would otherwise appear in DM history.
     return messages.filter(msg => {
+      if (msg.roomId) return false;
       const isFromOtherToUser = msg.senderId === otherParticipant && msg.recipientId === userId;
       const isFromUserToOther = msg.senderId === userId && msg.recipientId === otherParticipant;
       return isFromOtherToUser || isFromUserToOther;
