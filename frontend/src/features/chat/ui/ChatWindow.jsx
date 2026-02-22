@@ -500,7 +500,7 @@ export function ChatWindow() {
       )) : isDmChat ? (typingDisplayName ? (
         <span className="text-primary font-medium animate-pulse">{typingDisplayName} is typing...</span>
       ) : (
-        formatUserStatus(presenceUsers[dmOtherUserId])
+        (presenceUsers[dmOtherUserId] == null ? "Offline" : formatUserStatus(presenceUsers[dmOtherUserId]))
       )) : (
         <span>{groupMemberCountDisplay} members</span>
       ))

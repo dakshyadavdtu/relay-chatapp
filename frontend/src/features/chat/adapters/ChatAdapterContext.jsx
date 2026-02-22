@@ -1817,6 +1817,11 @@ export function ChatAdapterProvider({ children }) {
           const content = lm?.content;
           if (c.chatId != null && typeof content === "string" && content.trim() !== "") {
             const normalizedId = normalizeConversationId(c.chatId);
+            const isDirectChat =
+              typeof normalizedId === "string" &&
+              normalizedId.startsWith("direct:") &&
+              (c.type === undefined || c.type === "direct");
+            if (!isDirectChat) return;
             const incoming = {
               content,
               timestamp: lm?.timestamp ?? 0,

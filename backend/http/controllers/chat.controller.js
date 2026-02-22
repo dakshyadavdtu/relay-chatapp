@@ -263,9 +263,9 @@ async function getLastMessagePreview(chatId, userId) {
         return null;
       }
       
-      // Find last message from other participant
+      // Find last message from other participant (direct messages only; exclude room/group)
       const messagesFromOther = allMessages
-        .filter(m => m.senderId === otherParticipant)
+        .filter(m => m.senderId === otherParticipant && !m.roomId && !m.groupId && !m.roomChatId)
         .sort((a, b) => b.timestamp - a.timestamp);
       
       if (messagesFromOther.length === 0) {
@@ -307,10 +307,11 @@ async function getChats(req, res) {
       messageStore.getMessagesForSender(userId),
     ]);
     const allMessages = [...recipientMessages, ...senderMessages];
+    const directOnly = allMessages.filter(m => !m.roomId && !m.groupId && !m.roomChatId);
 
-    // Build chat map: chatId -> { participants } (dedupe by chatId)
+    // Build chat map: chatId -> { participants } (dedupe by chatId); direct messages only
     const chatMap = {};
-    for (const message of allMessages) {
+    for (const message of directOnly) {
       const chatId = generateDirectChatId(message.senderId, message.recipientId);
       if (!chatMap[chatId]) {
         chatMap[chatId] = {
@@ -324,9 +325,9 @@ async function getChats(req, res) {
     const chatIds = Object.keys(chatMap);
     const cursorMap = await readCursorStore.bulkGetCursors(userId, chatIds);
 
-    // Last message per chat from merged list (so outgoing-only chats get a preview)
+    // Last message per chat from direct messages only (room/group must not affect DM preview)
     const lastMessageByChat = {};
-    for (const message of allMessages) {
+    for (const message of directOnly) {
       const chatId = generateDirectChatId(message.senderId, message.recipientId);
       const ts = message.timestamp ?? 0;
       if (!lastMessageByChat[chatId] || (lastMessageByChat[chatId].timestamp ?? 0) < ts) {

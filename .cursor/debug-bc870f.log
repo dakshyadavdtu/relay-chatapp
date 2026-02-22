@@ -1,0 +1,4 @@
+{"sessionId":"bc870f","location":"password.controller.js:forgot","message":"after user lookup","data":{"userIsPromise":false,"targetEmailIsNull":false},"hypothesisId":"H1","timestamp":1771744192919}
+{"sessionId":"bc870f","location":"password.controller.js:forgot","message":"mailer branch entered","data":{},"hypothesisId":"H1","timestamp":1771744192951}
+{"sessionId":"bc870f","location":"mailer.js:sendPasswordResetOTP","message":"mailer called","data":{"isConfigured":true},"hypothesisId":"H2","timestamp":1771744192953}
+{"sessionId":"bc870f","location":"password.controller.js:reset","message":"after user lookup","data":{"userIsPromise":false,"hasUserId":true},"hypothesisId":"H3","timestamp":1771744227885}
