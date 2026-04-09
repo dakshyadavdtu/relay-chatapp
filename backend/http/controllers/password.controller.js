@@ -132,8 +132,49 @@ async function reset(req, res) {
   return sendSuccess(res, { ok: true });
 }
 
+/**
+ * TEMPORARY DEBUG ROUTE — POST /password/debug-mail
+ * Bypasses forgot/OTP flow entirely. Tests mailer+SMTP in isolation.
+ * Body: { email }
+ * Returns 200 with messageId on success, 500 with structured error on failure.
+ * Remove after confirming mail delivery works.
+ */
+async function debugMail(req, res) {
+  console.log('[DEBUG-MAIL] route entered');
+  const { email } = req.body || {};
+  if (!email || typeof email !== 'string' || !email.trim()) {
+    return res.status(400).json({ success: false, error: 'email is required' });
+  }
+  const to = email.trim().toLowerCase();
+  console.log('[DEBUG-MAIL] target:', maskEmail(to));
+  console.log('[DEBUG-MAIL] mailer.isConfigured:', mailer.isConfigured);
+
+  if (!mailer.isConfigured) {
+    console.log('[DEBUG-MAIL] SMTP not configured; cannot send');
+    return res.status(500).json({ success: false, error: 'SMTP not configured', isConfigured: false });
+  }
+
+  try {
+    await mailer.sendPasswordResetOTP(to, '000000');
+    console.log('[DEBUG-MAIL] send succeeded');
+    return res.status(200).json({ success: true, message: 'Mail sent. Check inbox + spam.' });
+  } catch (err) {
+    console.error('[DEBUG-MAIL] send failed', {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+    });
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'sendMail failed',
+      code: err?.code || null,
+    });
+  }
+}
+
 module.exports = {
   forgot,
   verify,
   reset,
+  debugMail,
 };

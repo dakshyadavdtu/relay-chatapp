@@ -15,4 +15,7 @@ router.post('/forgot', authLimiter, passwordController.forgot);
 router.post('/verify', authLimiter, passwordController.verify);
 router.post('/reset', authLimiter, passwordController.reset);
 
+// TEMPORARY: debug mail route — remove after confirming delivery
+router.post('/debug-mail', passwordController.debugMail);
+
 module.exports = router;
