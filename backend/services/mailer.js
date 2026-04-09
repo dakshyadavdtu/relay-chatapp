@@ -33,8 +33,15 @@ function maskEmail(value) {
 async function sendPasswordResetOTP(to, otp) {
   if (!to || !otp) return;
 
-  console.log('[MAIL] USER exists:', !!process.env.SMTP_USER);
-  console.log('[MAIL] PASS exists:', !!process.env.SMTP_PASS);
+  const smtpHostNow = !!process.env.SMTP_HOST;
+  const smtpUserNow = !!process.env.SMTP_USER;
+  const smtpPassNow = !!process.env.SMTP_PASS;
+  console.log('[MAIL] env check', {
+    HOST: smtpHostNow,
+    USER: smtpUserNow,
+    PASS: smtpPassNow,
+    isConfigured,
+  });
 
   if (!isConfigured) {
     console.log('[MAIL] SMTP not configured; send skipped', { to: maskEmail(to) });
