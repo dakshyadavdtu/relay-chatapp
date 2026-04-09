@@ -6,6 +6,7 @@
  */
 
 const nodemailer = require('nodemailer');
+const dns = require('dns').promises;
 
 const SMTP_HOST = process.env.SMTP_HOST;
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
@@ -22,6 +23,48 @@ function maskEmail(value) {
   const at = normalized.indexOf('@');
   if (at <= 1) return '***';
   return normalized.slice(0, 2) + '***' + normalized.slice(at);
+}
+
+/** True if SMTP_HOST is already an IPv4 literal (skip DNS). */
+function isIPv4Literal(host) {
+  if (!host || typeof host !== 'string') return false;
+  const parts = host.trim().split('.');
+  if (parts.length !== 4) return false;
+  return parts.every((p) => {
+    const n = Number(p);
+    return Number.isInteger(n) && n >= 0 && n <= 255;
+  });
+}
+
+/**
+ * Render (and some clouds) resolve smtp.gmail.com to IPv6 but have no IPv6 egress.
+ * Nodemailer does not reliably honor `family: 4` for SMTP. We resolve A records and
+ * connect to IPv4, while keeping TLS SNI as the original hostname (required for Gmail).
+ * @returns {{ connectHost: string, tlsServername: string }}
+ */
+async function resolveSmtpConnectHost(hostname) {
+  const trimmed = hostname.trim();
+  if (isIPv4Literal(trimmed)) {
+    const sni = process.env.SMTP_TLS_SERVERNAME || trimmed;
+    return { connectHost: trimmed, tlsServername: sni };
+  }
+  try {
+    const addresses = await dns.resolve4(trimmed);
+    if (addresses && addresses.length) {
+      console.log('[MAIL] using IPv4 for SMTP (A record)', {
+        hostname: trimmed,
+        connectHost: addresses[0],
+      });
+      return { connectHost: addresses[0], tlsServername: trimmed };
+    }
+  } catch (err) {
+    console.warn('[MAIL] resolve4 failed; falling back to hostname (may use IPv6)', {
+      hostname: trimmed,
+      message: err?.message,
+      code: err?.code,
+    });
+  }
+  return { connectHost: trimmed, tlsServername: trimmed };
 }
 
 /**
@@ -48,14 +91,18 @@ async function sendPasswordResetOTP(to, otp) {
     return;
   }
 
+  const { connectHost, tlsServername } = await resolveSmtpConnectHost(SMTP_HOST);
+
   const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
+    host: connectHost,
     port: SMTP_PORT,
     secure: SMTP_SECURE,
-    family: 4,
     connectionTimeout: 10000,
     greetingTimeout: 10000,
     socketTimeout: 15000,
+    tls: {
+      servername: tlsServername,
+    },
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
