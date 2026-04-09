@@ -16,6 +16,14 @@ const SMTP_FROM = process.env.SMTP_FROM || (SMTP_USER ? SMTP_USER : 'noreply@loc
 
 const isConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
 
+function maskEmail(value) {
+  if (!value || typeof value !== 'string') return '(empty)';
+  const normalized = value.trim().toLowerCase();
+  const at = normalized.indexOf('@');
+  if (at <= 1) return '***';
+  return normalized.slice(0, 2) + '***' + normalized.slice(at);
+}
+
 /**
  * Send OTP email. If SMTP not configured, logs to console (dev mode).
  * @param {string} to - Recipient email
@@ -29,7 +37,7 @@ async function sendPasswordResetOTP(to, otp) {
   console.log('[MAIL] PASS exists:', !!process.env.SMTP_PASS);
 
   if (!isConfigured) {
-    console.log('[DEV OTP] email=' + to + ' otp=' + otp);
+    console.log('[MAIL] SMTP not configured; send skipped', { to: maskEmail(to) });
     return;
   }
 
@@ -55,11 +63,15 @@ async function sendPasswordResetOTP(to, otp) {
   };
 
   try {
-    console.log('[MAIL] Sending...');
-    await transporter.sendMail(mailOptions);
-    console.log('[MAIL] Sent');
+    console.log('[MAIL] before transporter.sendMail', { to: maskEmail(to) });
+    const info = await transporter.sendMail(mailOptions);
+    console.log('[MAIL] after transporter.sendMail', { messageId: info && info.messageId ? info.messageId : '(none)' });
   } catch (err) {
-    console.error('[MAIL ERROR]', err);
+    console.error('[MAIL ERROR]', {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+    });
     throw err;
   }
 }

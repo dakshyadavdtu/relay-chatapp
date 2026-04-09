@@ -11,35 +11,70 @@ const passwordResetStore = require('../../auth/passwordResetStore');
 const mailer = require('../../services/mailer');
 const { sendError, sendSuccess } = require('../../utils/errorResponse');
 
+function maskEmail(value) {
+  if (!value || typeof value !== 'string') return '(empty)';
+  const normalized = value.trim().toLowerCase();
+  const at = normalized.indexOf('@');
+  if (at <= 1) return '***';
+  return normalized.slice(0, 2) + '***' + normalized.slice(at);
+}
+
 /**
  * POST /password/forgot
  * Body: { email } or { username } (one of both)
  * Returns 200 always (no enumeration). If user found and has email, sends OTP.
  */
 async function forgot(req, res) {
-  const { email, username } = req.body || {};
-  const emailOrUsername = typeof email === 'string' && email.trim()
-    ? email.trim()
-    : (typeof username === 'string' && username.trim() ? username.trim() : null);
+  console.log('[OTP] forgot route entered');
+  try {
+    const { email, username } = req.body || {};
+    const emailOrUsername = typeof email === 'string' && email.trim()
+      ? email.trim()
+      : (typeof username === 'string' && username.trim() ? username.trim() : null);
+    console.log('[OTP] payload received', {
+      email: maskEmail(email),
+      usernamePresent: typeof username === 'string' && username.trim().length > 0,
+    });
 
-  if (!emailOrUsername) {
-    return sendError(res, 400, 'Email or username is required', 'INVALID_REQUEST');
-  }
-
-  const user = await userService.findUserByEmailOrUsername(emailOrUsername);
-  const targetEmail = user && user.email ? user.email.trim().toLowerCase() : null;
-
-  if (targetEmail) {
-    try {
-      const { otp } = passwordResetStore.createOTPForEmail(targetEmail);
-      await mailer.sendPasswordResetOTP(targetEmail, otp);
-    } catch (err) {
-      console.error('Password reset OTP send error:', err);
-      // Still return 200 to avoid enumeration
+    if (!emailOrUsername) {
+      console.log('[OTP] missing email/username -> 400');
+      return sendError(res, 400, 'Email or username is required', 'INVALID_REQUEST');
     }
-  }
 
-  return sendSuccess(res, { ok: true });
+    const user = await userService.findUserByEmailOrUsername(emailOrUsername);
+    const targetEmail = user && user.email ? user.email.trim().toLowerCase() : null;
+    console.log('[OTP] user lookup result:', user ? 'FOUND' : 'NOT_FOUND');
+    console.log('[OTP] resolved targetEmail:', maskEmail(targetEmail));
+
+    if (targetEmail) {
+      try {
+        console.log('[OTP] before createOTPForEmail');
+        const { otp } = passwordResetStore.createOTPForEmail(targetEmail);
+        console.log('[OTP] after createOTPForEmail');
+        console.log('[OTP] before mailer.sendPasswordResetOTP');
+        await mailer.sendPasswordResetOTP(targetEmail, otp);
+        console.log('[OTP] after mailer.sendPasswordResetOTP');
+      } catch (err) {
+        console.error('[OTP MAIL ERROR]', {
+          name: err?.name,
+          message: err?.message,
+          code: err?.code,
+        });
+        // Still return 200 to avoid enumeration
+      }
+    } else {
+      console.log('[OTP] send skipped (no target email)');
+    }
+
+    return sendSuccess(res, { ok: true });
+  } catch (err) {
+    console.error('[OTP ERROR]', {
+      name: err?.name,
+      message: err?.message,
+      code: err?.code,
+    });
+    return res.status(500).json({ message: 'Failed to process password reset' });
+  }
 }
 
 /**
