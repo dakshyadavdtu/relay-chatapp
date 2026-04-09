@@ -25,6 +25,9 @@ const isConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
 async function sendPasswordResetOTP(to, otp) {
   if (!to || !otp) return;
 
+  console.log('[MAIL] USER exists:', !!process.env.SMTP_USER);
+  console.log('[MAIL] PASS exists:', !!process.env.SMTP_PASS);
+
   if (!isConfigured) {
     console.log('[DEV OTP] email=' + to + ' otp=' + otp);
     return;
@@ -34,19 +37,31 @@ async function sendPasswordResetOTP(to, otp) {
     host: SMTP_HOST,
     port: SMTP_PORT,
     secure: SMTP_SECURE,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
     },
   });
 
-  await transporter.sendMail({
+  const mailOptions = {
     from: SMTP_FROM,
     to,
     subject: 'Password reset code',
     text: 'Your password reset code is: ' + otp + '. It expires in 10 minutes.',
     html: '<p>Your password reset code is: <strong>' + otp + '</strong>.</p><p>It expires in 10 minutes.</p>',
-  });
+  };
+
+  try {
+    console.log('[MAIL] Sending...');
+    await transporter.sendMail(mailOptions);
+    console.log('[MAIL] Sent');
+  } catch (err) {
+    console.error('[MAIL ERROR]', err);
+    throw err;
+  }
 }
 
 module.exports = {
